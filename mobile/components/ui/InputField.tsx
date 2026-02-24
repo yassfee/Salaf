@@ -31,7 +31,7 @@ export default function InputField({
     <View style={styles.wrapper}>
       <View style={[styles.container, error ? styles.errorBorder : null]}>
         {icon && (
-          <Ionicons name={icon} size={18} color={Colors.textSecondary} style={styles.icon} />
+          <Ionicons name={icon} size={17} color={Colors.textSecondary} style={styles.icon} />
         )}
         {prefix && <Text style={styles.prefix}>{prefix}</Text>}
         <TextInput
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 14,
     backgroundColor: Colors.card,
   },

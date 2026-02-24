@@ -25,7 +25,7 @@ export default function PrimaryButton({
       activeOpacity={0.85}
     >
       {loading ? (
-        <ActivityIndicator color="#fff" />
+        <ActivityIndicator color={Colors.textPrimary} />
       ) : (
         <Text style={styles.text}>{title}</Text>
       )}
@@ -36,15 +36,16 @@ export default function PrimaryButton({
 const styles = StyleSheet.create({
   button: {
     height: 52,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
   },
-  disabled: { opacity: 0.5 },
+  disabled: { opacity: 0.45 },
   text: {
-    color: '#FFFFFF',
+    color: Colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });

@@ -9,8 +9,8 @@ interface ProgressBarProps {
 const getColor = (p: number): string => {
   const pct = p * 100;
   if (pct >= 100) return Colors.success;
-  if (pct >= 71) return Colors.primary;
-  if (pct >= 41) return Colors.warning;
+  if (pct >= 71) return Colors.blue;
+  if (pct >= 41) return Colors.primary; // amber
   return Colors.danger;
 };
 

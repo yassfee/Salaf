@@ -7,9 +7,9 @@ interface TrustBadgeProps {
 }
 
 const getTrustLevel = (score: number) => {
-  if (score >= 70) return { label: 'Reliable', bg: '#D1FAE5', text: Colors.success };
-  if (score >= 40) return { label: 'Moderate', bg: '#FEF3C7', text: '#D97706' };
-  return { label: 'Risky', bg: '#FEE2E2', text: Colors.danger };
+  if (score >= 70) return { label: 'Reliable', bg: '#F0FDF4', text: '#16A34A' };
+  if (score >= 40) return { label: 'Moderate', bg: Colors.primaryLight, text: Colors.primaryDark };
+  return { label: 'Risky', bg: '#FEF2F2', text: Colors.danger };
 };
 
 export default function TrustBadge({ score }: TrustBadgeProps) {

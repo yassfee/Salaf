@@ -15,7 +15,7 @@ export default function OutlinedButton({
   title,
   onPress,
   icon,
-  color = Colors.primary,
+  color = Colors.textPrimary,
   disabled,
 }: OutlinedButtonProps) {
   return (
@@ -33,10 +33,10 @@ export default function OutlinedButton({
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.card,
     height: 52,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    borderRadius: 14,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',

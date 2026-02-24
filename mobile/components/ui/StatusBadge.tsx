@@ -10,13 +10,13 @@ interface StatusBadgeProps {
 }
 
 const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-  PENDING: { bg: '#FEF3C7', text: '#D97706', label: 'Pending' },
-  ACCEPTED: { bg: Colors.primaryLight, text: Colors.primary, label: 'Accepted' },
-  ACTIVE: { bg: Colors.primaryLight, text: Colors.primary, label: 'Active' },
-  PARTIALLY_PAID: { bg: '#FEF3C7', text: '#D97706', label: 'Partial' },
-  PAID: { bg: '#D1FAE5', text: Colors.success, label: 'Paid' },
-  REJECTED: { bg: '#FEE2E2', text: Colors.danger, label: 'Rejected' },
-  OVERDUE: { bg: '#FEE2E2', text: Colors.danger, label: 'Overdue' },
+  PENDING:        { bg: Colors.primaryLight,  text: Colors.primaryDark, label: 'Pending' },
+  ACCEPTED:       { bg: Colors.blueLight,     text: Colors.blue,        label: 'Accepted' },
+  ACTIVE:         { bg: Colors.primary,        text: '#FFFFFF',          label: 'Active' },
+  PARTIALLY_PAID: { bg: Colors.warningLight,  text: Colors.warning,     label: 'Partial' },
+  PAID:           { bg: Colors.successLight,  text: Colors.success,     label: 'Paid' },
+  REJECTED:       { bg: Colors.dangerLight,   text: Colors.danger,      label: 'Rejected' },
+  OVERDUE:        { bg: Colors.textPrimary,    text: '#FFFFFF',          label: 'Overdue' },
 };
 
 export default function StatusBadge({ status }: StatusBadgeProps) {

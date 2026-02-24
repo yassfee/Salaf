@@ -8,18 +8,23 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textSecondary,
+        tabBarInactiveTintColor: '#121212',
         tabBarStyle: {
-          height: 64,
+          height: 68,
           paddingBottom: 10,
           paddingTop: 8,
           backgroundColor: Colors.card,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.04,
+          shadowRadius: 8,
+          elevation: 8,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '500',
+          fontWeight: '600',
         },
       }}
     >
@@ -28,7 +33,7 @@ export default function TabsLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+            <Ionicons name="home-outline" size={size} color={color} />
           ),
         }}
       />
@@ -37,7 +42,7 @@ export default function TabsLayout() {
         options={{
           title: 'Lends',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="swap-horizontal" size={size} color={color} />
+            <Ionicons name="swap-horizontal-outline" size={size} color={color} />
           ),
         }}
       />
@@ -46,7 +51,7 @@ export default function TabsLayout() {
         options={{
           title: 'Requests',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="mail" size={size} color={color} />
+            <Ionicons name="mail-outline" size={size} color={color} />
           ),
         }}
       />
@@ -55,7 +60,7 @@ export default function TabsLayout() {
         options={{
           title: 'Contacts',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people" size={size} color={color} />
+            <Ionicons name="people-outline" size={size} color={color} />
           ),
         }}
       />
@@ -64,7 +69,7 @@ export default function TabsLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+            <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
       />

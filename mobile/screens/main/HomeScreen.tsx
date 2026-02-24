@@ -18,10 +18,10 @@ import OutlinedButton from '../../components/ui/OutlinedButton';
 import { formatCurrency, getGreeting } from '../../utils/formatCurrency';
 
 const summaryCards = [
-  { label: 'Total Lent', icon: '💰', amount: 375, color: Colors.primary },
-  { label: 'Total Borrowed', icon: '📥', amount: 0, color: Colors.success },
-  { label: 'Outstanding', icon: '⏳', amount: 300, color: Colors.warning },
-  { label: 'Overdue', icon: '🔴', amount: 200, color: Colors.danger },
+  { label: 'Total Lent', icon: 'arrow-up-outline', amount: 375, color: Colors.primary },
+  { label: 'Total Borrowed', icon: 'arrow-down-outline', amount: 0, color: Colors.primary },
+  { label: 'Outstanding', icon: 'time-outline', amount: 300, color: Colors.primary },
+  { label: 'Overdue', icon: 'alert-circle-outline', amount: 200, color: Colors.primary },
 ];
 
 const dueSoonLends = MOCK_LENDS.filter(
@@ -54,7 +54,7 @@ export default function HomeScreen() {
             <View key={card.label} style={styles.summaryCard}>
               <View style={styles.summaryTop}>
                 <Text style={styles.summaryLabel}>{card.label}</Text>
-                <Text style={styles.summaryIcon}>{card.icon}</Text>
+                <Ionicons name={card.icon as any} size={18} color={Colors.primary} />
               </View>
               <Text style={[styles.summaryAmount, card.label === 'Overdue' && styles.redText]}>
                 {formatCurrency(card.amount)}
@@ -87,7 +87,7 @@ export default function HomeScreen() {
             <PrimaryButton title="+ New Lend" onPress={() => router.push('/create-lend')} />
             <View style={styles.spacer} />
             <OutlinedButton
-              title="💡 Suggest Repayment"
+              title="Suggest Repayment"
               onPress={() => router.push('/suggest-repayment')}
             />
           </View>
@@ -150,9 +150,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flex: 1,
   },
-  summaryIcon: {
-    fontSize: 16,
-  },
+
   summaryAmount: {
     fontSize: 18,
     fontWeight: '700',
