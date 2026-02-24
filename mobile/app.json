@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Salaf",
+    "slug": "salaf",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "salaf",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.salaf.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.salaf.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
