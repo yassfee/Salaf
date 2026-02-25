@@ -1,11 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,115 +26,128 @@ export default function LendsScreen() {
   const [direction, setDirection] = useState<DirectionTab>('owed');
   const [activeFilter, setActiveFilter] = useState<FilterChip>('All');
 
-  const filtered = MOCK_LENDS.filter((l) =>
-    statusMap[activeFilter].includes(l.status)
-  );
+  const filtered = MOCK_LENDS.filter((l) => statusMap[activeFilter].includes(l.status));
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Lends</Text>
-        </View>
-
-        {/* Direction Toggle */}
-        <View style={styles.px}>
-          <View style={styles.toggle}>
-            <TouchableOpacity
-              style={[styles.toggleBtn, direction === 'owed' && styles.toggleBtnActive]}
-              onPress={() => setDirection('owed')}
-            >
-              <Text style={[styles.toggleText, direction === 'owed' && styles.toggleTextActive]}>
-                Owed to Me
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.toggleBtn, direction === 'iowe' && styles.toggleBtnActive]}
-              onPress={() => setDirection('iowe')}
-            >
-              <Text style={[styles.toggleText, direction === 'iowe' && styles.toggleTextActive]}>
-                I Owe
-              </Text>
-            </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea}>
+      {/* Amber Header */}
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.title}>My Lends</Text>
+            <Text style={styles.subtitle}>{MOCK_LENDS.length} total records</Text>
           </View>
+          <TouchableOpacity style={styles.iconBtn}>
+            <Ionicons name="options-outline" size={20} color={Colors.textPrimary} />
+          </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Filter Chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-        >
-          {filterChips.map((chip) => (
-            <TouchableOpacity
-              key={chip}
-              style={[styles.chip, activeFilter === chip && styles.chipActive]}
-              onPress={() => setActiveFilter(chip)}
-            >
-              <Text style={[styles.chipText, activeFilter === chip && styles.chipTextActive]}>
-                {chip}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      {/* Content */}
+      <View style={styles.content}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Direction Toggle */}
+          <View style={styles.px}>
+            <View style={styles.toggle}>
+              <TouchableOpacity
+                style={[styles.toggleBtn, direction === 'owed' && styles.toggleBtnActive]}
+                onPress={() => setDirection('owed')}
+              >
+                <Text style={[styles.toggleText, direction === 'owed' && styles.toggleTextActive]}>
+                  Owed to Me
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toggleBtn, direction === 'iowe' && styles.toggleBtnActive]}
+                onPress={() => setDirection('iowe')}
+              >
+                <Text style={[styles.toggleText, direction === 'iowe' && styles.toggleTextActive]}>
+                  I Owe
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Filter Chips */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsRow}
+          >
+            {filterChips.map((chip) => (
+              <TouchableOpacity
+                key={chip}
+                style={[styles.chip, activeFilter === chip && styles.chipActive]}
+                onPress={() => setActiveFilter(chip)}
+              >
+                <Text style={[styles.chipText, activeFilter === chip && styles.chipTextActive]}>
+                  {chip}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* Lend List */}
+          <View style={styles.px}>
+            {filtered.length === 0 ? (
+              <View style={styles.empty}>
+                <Text style={styles.emptyText}>No lends found.</Text>
+              </View>
+            ) : (
+              filtered.map((lend) => (
+                <LendCard
+                  key={lend.id}
+                  lend={lend}
+                  onPress={() => router.push(`/lend-details?id=${lend.id}`)}
+                />
+              ))
+            )}
+          </View>
         </ScrollView>
 
-        {/* Lend List */}
-        <View style={styles.px}>
-          {filtered.length === 0 ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>No lends found.</Text>
-            </View>
-          ) : (
-            filtered.map((lend) => (
-              <LendCard
-                key={lend.id}
-                lend={lend}
-                onPress={() => router.push(`/lend-details?id=${lend.id}`)}
-              />
-            ))
-          )}
-        </View>
-      </ScrollView>
-
-      {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => router.push('/create-lend')}>
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
+        {/* FAB */}
+        <TouchableOpacity style={styles.fab} onPress={() => router.push('/create-lend')}>
+          <Ionicons name="add" size={28} color="#fff" />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  safeArea: { flex: 1, backgroundColor: Colors.primary },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingTop: 8,
+    paddingBottom: 24,
+    backgroundColor: Colors.primary,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: Colors.textPrimary,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  px: {
-    paddingHorizontal: 20,
+  title: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
+  subtitle: { fontSize: 13, color: Colors.textPrimary, opacity: 0.6, marginTop: 2 },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  content: { flex: 1, backgroundColor: Colors.background },
+  px: { paddingHorizontal: 20 },
   toggle: {
     flexDirection: 'row',
     backgroundColor: Colors.border,
     borderRadius: 12,
     padding: 4,
+    marginTop: 16,
     marginBottom: 16,
   },
-  toggleBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
+  toggleBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
   toggleBtnActive: {
     backgroundColor: Colors.card,
     shadowColor: '#000',
@@ -149,20 +156,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  toggleText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-  toggleTextActive: {
-    color: Colors.primary,
-    fontWeight: '700',
-  },
-  chipsRow: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    gap: 8,
-  },
+  toggleText: { fontSize: 14, color: Colors.textSecondary, fontWeight: '500' },
+  toggleTextActive: { color: Colors.primary, fontWeight: '700' },
+  chipsRow: { paddingHorizontal: 20, paddingBottom: 16, gap: 8 },
   chip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -171,27 +167,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     backgroundColor: Colors.card,
   },
-  chipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  chipText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-  chipTextActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  empty: {
-    paddingVertical: 40,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
+  chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  chipText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
+  chipTextActive: { color: '#fff', fontWeight: '600' },
+  empty: { paddingVertical: 40, alignItems: 'center' },
+  emptyText: { fontSize: 14, color: Colors.textSecondary },
   fab: {
     position: 'absolute',
     bottom: 24,

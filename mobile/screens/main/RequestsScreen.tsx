@@ -15,6 +15,7 @@ export default function RequestsScreen() {
   const incoming = requests.filter((r) => r.type === 'INCOMING');
   const outgoing = requests.filter((r) => r.type === 'OUTGOING');
   const displayed = tab === 'incoming' ? incoming : outgoing;
+  const pendingCount = incoming.filter((r) => r.status === 'PENDING').length;
 
   const handleAccept = (id: number) => {
     setRequests((prev) =>
@@ -29,12 +30,18 @@ export default function RequestsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Requests</Text>
-        </View>
+    <SafeAreaView style={styles.safeArea}>
+      {/* Amber Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Requests</Text>
+        <Text style={styles.subtitle}>
+          {pendingCount > 0 ? `${pendingCount} pending incoming` : 'No pending requests'}
+        </Text>
+      </View>
 
+      {/* Content */}
+      <View style={styles.content}>
+      <ScrollView showsVerticalScrollIndicator={false}>
         {/* Toggle */}
         <View style={styles.px}>
           <View style={styles.toggle}>
@@ -111,20 +118,29 @@ export default function RequestsScreen() {
           ))}
         </View>
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  title: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary },
+  safeArea: { flex: 1, backgroundColor: Colors.primary },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
+    backgroundColor: Colors.primary,
+  },
+  title: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
+  subtitle: { fontSize: 13, color: Colors.textPrimary, opacity: 0.6, marginTop: 2 },
+  content: { flex: 1, backgroundColor: Colors.background },
   px: { paddingHorizontal: 20 },
   toggle: {
     flexDirection: 'row',
     backgroundColor: Colors.border,
     borderRadius: 12,
     padding: 4,
+    marginTop: 16,
     marginBottom: 16,
   },
   toggleBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },

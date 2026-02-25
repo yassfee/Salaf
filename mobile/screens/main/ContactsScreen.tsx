@@ -16,27 +16,38 @@ export default function ContactsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      {/* Amber Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Contacts</Text>
-        <TouchableOpacity style={styles.addBtn}>
-          <Ionicons name="add" size={24} color={Colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.title}>My Contacts</Text>
+            <Text style={styles.subtitle}>{MOCK_CONTACTS.length} people</Text>
+          </View>
+          <TouchableOpacity style={styles.addBtn}>
+            <Ionicons name="add" size={22} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Search Bar in header */}
+        <View style={styles.searchWrapper}>
+          <Ionicons name="search-outline" size={17} color={Colors.textSecondary} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search contacts..."
+            placeholderTextColor={Colors.textSecondary}
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
       </View>
 
-      {/* Search */}
-      <View style={styles.searchWrapper}>
-        <Ionicons name="search-outline" size={18} color={Colors.textSecondary} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search contacts..."
-          placeholderTextColor={Colors.textSecondary}
-          value={search}
-          onChangeText={setSearch}
-        />
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
+      {/* Content */}
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.list}
+      >
         {filtered.map((contact) => (
           <ContactCard
             key={contact.id}
@@ -55,32 +66,41 @@ export default function ContactsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  safeArea: { flex: 1, backgroundColor: Colors.primary },
   header: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
+    backgroundColor: Colors.primary,
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
+    marginBottom: 18,
   },
-  title: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary },
-  addBtn: { padding: 4 },
+  title: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
+  subtitle: { fontSize: 13, color: Colors.textPrimary, opacity: 0.6, marginTop: 2 },
+  addBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   searchWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.card,
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
     paddingHorizontal: 14,
     height: 48,
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
   searchIcon: { marginRight: 10 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
-  list: { paddingHorizontal: 20, paddingBottom: 24 },
+  content: { flex: 1, backgroundColor: Colors.background },
+  list: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
   empty: { paddingVertical: 40, alignItems: 'center' },
   emptyText: { fontSize: 14, color: Colors.textSecondary },
 });
