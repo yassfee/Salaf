@@ -92,13 +92,13 @@ export default function RequestsScreen() {
                     style={styles.acceptBtn}
                     onPress={() => handleAccept(req.id)}
                   >
-                    <Text style={styles.acceptText}>✅ Accept</Text>
+                    <Text style={styles.acceptText}>Accept</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.rejectBtn}
                     onPress={() => handleReject(req.id)}
                   >
-                    <Text style={styles.rejectText}>❌ Reject</Text>
+                    <Text style={styles.rejectText}>Reject</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -167,21 +167,22 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
   acceptBtn: {
     flex: 1,
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.primary,
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',
   },
-  acceptText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  acceptText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
   rejectBtn: {
     flex: 1,
+    backgroundColor: Colors.card,
     borderWidth: 1.5,
-    borderColor: Colors.danger,
+    borderColor: Colors.textPrimary,
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',
   },
-  rejectText: { color: Colors.danger, fontWeight: '600', fontSize: 14 },
+  rejectText: { color: Colors.textPrimary, fontWeight: '600', fontSize: 14 },
   empty: { paddingVertical: 40, alignItems: 'center' },
   emptyText: { fontSize: 14, color: Colors.textSecondary },
 });

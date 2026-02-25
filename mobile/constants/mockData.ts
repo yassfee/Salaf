@@ -111,19 +111,19 @@ export const MOCK_REPAYMENTS: Repayment[] = [
 export const MOCK_BADGES: Badge[] = [
   {
     name: 'On-Time Hero',
-    icon: '🏆',
+    icon: 'trophy-outline',
     desc: 'Always paid on time',
     earned: '2025-01-01',
   },
   {
     name: 'Trusted Lender',
-    icon: '🤝',
+    icon: 'ribbon-outline',
     desc: '10+ completed lends',
     earned: '2025-01-15',
   },
   {
     name: 'Debt Free',
-    icon: '🔒',
+    icon: 'lock-closed-outline',
     desc: 'No outstanding debts',
     earned: '2025-02-01',
   },

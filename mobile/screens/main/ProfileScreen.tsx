@@ -6,7 +6,6 @@ import { Colors } from '../../constants/colors';
 import { MOCK_USER, MOCK_BADGES } from '../../constants/mockData';
 import CardContainer from '../../components/ui/CardContainer';
 import BadgeCard from '../../components/cards/BadgeCard';
-import OutlinedButton from '../../components/ui/OutlinedButton';
 import { getInitials, formatCurrency } from '../../utils/formatCurrency';
 
 export default function ProfileScreen() {
@@ -46,13 +45,13 @@ export default function ProfileScreen() {
 
         {/* Settings & Logout */}
         <View style={styles.section}>
-          <OutlinedButton title="⚙️ Settings" onPress={() => {}} />
+          <TouchableOpacity style={styles.settingsBtn} onPress={() => {}}>
+            <Text style={styles.settingsText}>Settings</Text>
+          </TouchableOpacity>
           <View style={styles.spacer} />
-          <OutlinedButton
-            title="🚪 Logout"
-            onPress={() => router.replace('/auth')}
-            color={Colors.danger}
-          />
+          <TouchableOpacity style={styles.logoutBtn} onPress={() => router.replace('/auth')}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -122,4 +121,32 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   spacer: { height: 12 },
+  settingsBtn: {
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  logoutBtn: {
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: Colors.card,
+    borderWidth: 1.5,
+    borderColor: Colors.textPrimary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoutText: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
 });
