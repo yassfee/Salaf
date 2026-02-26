@@ -40,14 +40,14 @@ const styles = StyleSheet.create({
   avatar: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primaryLight,
+    borderRadius: 12,
+    backgroundColor: '#EFEFEF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   avatarText: {
-    color: Colors.primary,
+    color: '#121212',
     fontWeight: '700',
     fontSize: 15,
   },

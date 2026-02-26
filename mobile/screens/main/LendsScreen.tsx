@@ -38,7 +38,7 @@ export default function LendsScreen() {
             <Text style={styles.subtitle}>{MOCK_LENDS.length} total records</Text>
           </View>
           <TouchableOpacity style={styles.iconBtn}>
-            <Ionicons name="options-outline" size={20} color={Colors.textPrimary} />
+            <Ionicons name="options-outline" size={20} color="#121212" />
           </TouchableOpacity>
         </View>
       </View>
@@ -115,25 +115,28 @@ export default function LendsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.primary },
+  safeArea: { flex: 1, backgroundColor: Colors.background },
   header: {
+    marginHorizontal: 16,
+    marginTop: 8,
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 16,
     paddingBottom: 24,
     backgroundColor: Colors.primary,
+    borderRadius: 28,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  title: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
-  subtitle: { fontSize: 13, color: Colors.textPrimary, opacity: 0.6, marginTop: 2 },
+  title: { fontSize: 26, fontWeight: '800', color: '#FFFFFF' },
+  subtitle: { fontSize: 13, color: '#FFFFFF', opacity: 0.75, marginTop: 2 },
   iconBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 12,
+    backgroundColor: '#EFEFEF',
     alignItems: 'center',
     justifyContent: 'center',
   },

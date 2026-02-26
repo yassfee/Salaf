@@ -82,26 +82,29 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.primary },
+  safeArea: { flex: 1, backgroundColor: Colors.background },
   header: {
+    marginHorizontal: 16,
+    marginTop: 8,
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 16,
     paddingBottom: 28,
     backgroundColor: Colors.primary,
+    borderRadius: 28,
     alignItems: 'center',
   },
   avatar: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    backgroundColor: '#EFEFEF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
-  avatarText: { fontSize: 28, fontWeight: '700', color: Colors.primary },
-  name: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 },
-  email: { fontSize: 13, color: Colors.textPrimary, opacity: 0.65 },
+  avatarText: { fontSize: 28, fontWeight: '700', color: '#121212' },
+  name: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', marginBottom: 4 },
+  email: { fontSize: 13, color: '#FFFFFF', opacity: 0.75 },
   scroll: { flex: 1, backgroundColor: Colors.background },
   scrollContent: { paddingBottom: 40 },
 

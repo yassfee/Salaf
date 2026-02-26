@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Lend } from '../../types';
 import { Colors } from '../../constants/colors';
 import StatusBadge from '../ui/StatusBadge';
@@ -14,15 +15,22 @@ interface LendCardProps {
 
 export default function LendCard({ lend, onPress }: LendCardProps) {
   const progress = lend.amount > 0 ? lend.paid / lend.amount : 0;
+  const isBorrowed = lend.type === 'BORROWED';
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
       <CardContainer style={styles.card}>
         <View style={styles.header}>
           <View style={styles.avatarRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials(lend.contact)}</Text>
+            {/* Rounded-square arrow icon — gray background, dark icon */}
+            <View style={styles.iconWrap}>
+              <Ionicons
+                name={isBorrowed ? 'arrow-down-outline' : 'arrow-up-outline'}
+                size={20}
+                color="#121212"
+              />
             </View>
+
             <View style={styles.info}>
               <Text style={styles.name}>{lend.contact}</Text>
               <Text style={styles.amount}>
@@ -55,26 +63,20 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primaryLight,
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#EFEFEF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
-  },
-  avatarText: {
-    color: Colors.primary,
-    fontWeight: '700',
-    fontSize: 14,
+    marginRight: 12,
   },
   info: { flex: 1 },
   name: {
     fontSize: 15,
     fontWeight: '600',
     color: Colors.textPrimary,
-    marginBottom: 2,
   },
   amount: {
     fontSize: 13,

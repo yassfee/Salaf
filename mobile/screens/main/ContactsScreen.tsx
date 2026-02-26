@@ -25,7 +25,7 @@ export default function ContactsScreen() {
             <Text style={styles.subtitle}>{MOCK_CONTACTS.length} people</Text>
           </View>
           <TouchableOpacity style={styles.addBtn}>
-            <Ionicons name="add" size={22} color={Colors.textPrimary} />
+            <Ionicons name="add" size={22} color="#121212" />
           </TouchableOpacity>
         </View>
 
@@ -66,12 +66,15 @@ export default function ContactsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.primary },
+  safeArea: { flex: 1, backgroundColor: Colors.background },
   header: {
+    marginHorizontal: 16,
+    marginTop: 8,
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 16,
     paddingBottom: 20,
     backgroundColor: Colors.primary,
+    borderRadius: 28,
   },
   headerRow: {
     flexDirection: 'row',
@@ -79,13 +82,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 18,
   },
-  title: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
-  subtitle: { fontSize: 13, color: Colors.textPrimary, opacity: 0.6, marginTop: 2 },
+  title: { fontSize: 26, fontWeight: '800', color: '#FFFFFF' },
+  subtitle: { fontSize: 13, color: '#FFFFFF', opacity: 0.75, marginTop: 2 },
   addBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 12,
+    backgroundColor: '#EFEFEF',
     alignItems: 'center',
     justifyContent: 'center',
   },

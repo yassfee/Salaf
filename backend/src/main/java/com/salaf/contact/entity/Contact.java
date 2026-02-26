@@ -1,21 +1,36 @@
 package com.salaf.contact.entity;
 
+import com.salaf.auth.entity.User;
 import jakarta.persistence.*;
 import lombok.Data;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "contacts")
 @Data
 public class Contact {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // TODO: add remaining fields below
+    private Long id;
 
-    // TODO: Add fields:
-    //   Long id             -> @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    //   String name         -> @Column(nullable = false)
-    //   String phone        -> optional
-    //   String email        -> optional
-    //   User owner          -> @ManyToOne @JoinColumn(name = "owner_id") -- links to the user who created this contact
-    //   LocalDateTime createdAt -> @Column(updatable = false), set via @PrePersist
+    @Column(nullable = false)
+    private String name;
+
+    private String phone;
+
+    private String email;
+
+    @ManyToOne
+    @JoinColumn(name = "owner_id", nullable = false)
+    private User owner;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 }

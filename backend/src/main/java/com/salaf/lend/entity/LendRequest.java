@@ -1,27 +1,52 @@
 package com.salaf.lend.entity;
 
+import com.salaf.auth.entity.User;
+import com.salaf.contact.entity.Contact;
 import jakarta.persistence.*;
 import lombok.Data;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "lend_requests")
 @Data
 public class LendRequest {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // TODO: add remaining fields below
+    private Long id;
 
-    // TODO: Add fields:
-    //   Long id                  -> @Id @GeneratedValue
-    //   User lender              -> @ManyToOne @JoinColumn(name = "lender_id")
-    //   Contact borrower         -> @ManyToOne @JoinColumn(name = "borrower_id")
-    //   BigDecimal amount        -> @Column(nullable = false)
-    //   BigDecimal remainingBalance -> tracks how much is still owed
-    //   LocalDate dueDate        -> @Column(nullable = false)
-    //   String note              -> optional
-    //   LendStatus status        -> @Enumerated(EnumType.STRING), default = PENDING
-    //   LocalDateTime createdAt  -> @Column(updatable = false), set via @PrePersist
+    @ManyToOne
+    @JoinColumn(name = "lender_id", nullable = false)
+    private User lender;
 
-    // TODO: Create LendStatus enum in the same package with values:
-    //   PENDING, ACCEPTED, REJECTED, ACTIVE, PARTIALLY_PAID, PAID, OVERDUE
+    @ManyToOne
+    @JoinColumn(name = "borrower_id", nullable = false)
+    private Contact borrower;
+
+    @Column(nullable = false)
+    private BigDecimal amount;
+
+    @Column(nullable = false)
+    private BigDecimal remainingBalance;
+
+    @Column(nullable = false)
+    private LocalDate dueDate;
+
+    private String note;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private LendStatus status = LendStatus.PENDING;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        if (remainingBalance == null) remainingBalance = amount;
+    }
 }

@@ -124,15 +124,18 @@ export default function RequestsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.primary },
+  safeArea: { flex: 1, backgroundColor: Colors.background },
   header: {
+    marginHorizontal: 16,
+    marginTop: 8,
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 16,
     paddingBottom: 24,
     backgroundColor: Colors.primary,
+    borderRadius: 28,
   },
-  title: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
-  subtitle: { fontSize: 13, color: Colors.textPrimary, opacity: 0.6, marginTop: 2 },
+  title: { fontSize: 26, fontWeight: '800', color: '#FFFFFF' },
+  subtitle: { fontSize: 13, color: '#FFFFFF', opacity: 0.75, marginTop: 2 },
   content: { flex: 1, backgroundColor: Colors.background },
   px: { paddingHorizontal: 20 },
   toggle: {
@@ -165,12 +168,12 @@ const styles = StyleSheet.create({
   avatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primaryLight,
+    borderRadius: 12,
+    backgroundColor: '#EFEFEF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { color: Colors.primary, fontWeight: '700', fontSize: 14 },
+  avatarText: { color: '#121212', fontWeight: '700', fontSize: 14 },
   contactName: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
   requestAmount: { fontSize: 13, color: Colors.textSecondary },
   dueDate: { fontSize: 12, color: Colors.textSecondary, marginBottom: 4 },

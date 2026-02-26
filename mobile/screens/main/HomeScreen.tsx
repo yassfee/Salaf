@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,11 @@ const summaryCards = [
   { label: 'Outstanding', icon: 'time-outline', amount: 300 },
   { label: 'Overdue', icon: 'alert-circle-outline', amount: 200 },
 ];
+
+const { width: SCREEN_W } = Dimensions.get('window');
+const CARD_GAP = 12;
+const CARD_PAD = 20;
+const cardW = (SCREEN_W - CARD_PAD * 2 - CARD_GAP) / 2;
 
 const dueSoonLends = MOCK_LENDS.filter(
   (l) => l.status === 'ACTIVE' || l.status === 'OVERDUE'
@@ -37,16 +42,18 @@ export default function HomeScreen() {
             </View>
           </View>
           <TouchableOpacity style={styles.bellBtn}>
-            <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
+            <Ionicons name="notifications-outline" size={22} color="#121212" />
           </TouchableOpacity>
+
         </View>
 
-        <Text style={styles.headline}>Track your loans,{'\n'}stay in control.</Text>
+        <Text style={styles.headline}>•••• •••• •••• 4242</Text>
 
-        <View style={styles.totalChip}>
-          <Ionicons name="arrow-up-outline" size={13} color="#FFFFFF" />
-          <Text style={styles.totalChipText}>{formatCurrency(375)} total lent</Text>
-        </View>
+        <TouchableOpacity style={styles.totalChip} activeOpacity={0.8}>
+          <Ionicons name="eye-outline" size={13} color="#121212" />
+
+          <Text style={styles.totalChipText}>Show Balance</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Content */}
@@ -72,25 +79,6 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* Summary Cards */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.summaryRow}
-        >
-          {summaryCards.map((card) => (
-            <View key={card.label} style={styles.summaryCard}>
-              <View style={styles.summaryTop}>
-                <Text style={styles.summaryLabel}>{card.label}</Text>
-                <Ionicons name={card.icon as any} size={18} color={Colors.primary} />
-              </View>
-              <Text style={[styles.summaryAmount, card.label === 'Overdue' && styles.redText]}>
-                {formatCurrency(card.amount)}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
-
         {/* Due Soon */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -105,6 +93,26 @@ export default function HomeScreen() {
               lend={lend}
               onPress={() => router.push(`/lend-details?id=${lend.id}`)}
             />
+          ))}
+        </View>
+
+        {/* Overview — 2×2 grid */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Overview</Text>
+          </View>
+        </View>
+        <View style={styles.summaryGrid}>
+          {summaryCards.map((card) => (
+            <View key={card.label} style={[styles.summaryCard, { width: cardW }]}>
+              <View style={styles.summaryTop}>
+                <Text style={styles.summaryLabel}>{card.label}</Text>
+                <Ionicons name={card.icon as any} size={18} color={Colors.primary} />
+              </View>
+              <Text style={[styles.summaryAmount, card.label === 'Overdue' && styles.redText]}>
+                {formatCurrency(card.amount)}
+              </Text>
+            </View>
           ))}
         </View>
 
@@ -134,27 +142,27 @@ const styles = StyleSheet.create({
   avatar: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    backgroundColor: '#EFEFEF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  avatarText: { fontSize: 15, fontWeight: '700', color: '#121212' },
   greeting: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
   subGreeting: { fontSize: 12, color: '#FFFFFF', opacity: 0.75 },
   bellBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 12,
+    backgroundColor: '#EFEFEF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headline: {
-    fontSize: 26,
-    fontWeight: '800',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#FFFFFF',
-    lineHeight: 34,
+    letterSpacing: 3,
     marginBottom: 18,
   },
   totalChip: {
@@ -162,17 +170,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    borderRadius: 20,
+    backgroundColor: '#EFEFEF',
+    borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 7,
   },
-  totalChipText: { fontSize: 13, fontWeight: '600', color: '#FFFFFF' },
+  totalChipText: { fontSize: 13, fontWeight: '600', color: '#121212' },
   scroll: { flex: 1, backgroundColor: Colors.background },
   scrollContent: { paddingBottom: 24 },
-  summaryRow: { paddingHorizontal: 20, paddingVertical: 16, gap: 12 },
+  summaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: CARD_PAD,
+    paddingBottom: 16,
+    gap: CARD_GAP,
+  },
   summaryCard: {
-    width: 140,
     height: 90,
     backgroundColor: Colors.card,
     borderRadius: 14,
@@ -209,7 +222,7 @@ const styles = StyleSheet.create({
   quickCircle: {
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: 16,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
