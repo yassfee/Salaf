@@ -37,14 +37,14 @@ export default function HomeScreen() {
             </View>
           </View>
           <TouchableOpacity style={styles.bellBtn}>
-            <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
+            <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
         <Text style={styles.headline}>Track your loans,{'\n'}stay in control.</Text>
 
         <View style={styles.totalChip}>
-          <Ionicons name="arrow-up-outline" size={13} color={Colors.primary} />
+          <Ionicons name="arrow-up-outline" size={13} color="#FFFFFF" />
           <Text style={styles.totalChipText}>{formatCurrency(375)} total lent</Text>
         </View>
       </View>
@@ -114,12 +114,15 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.primary },
+  safeArea: { flex: 1, backgroundColor: Colors.background },
   header: {
+    marginHorizontal: 16,
+    marginTop: 8,
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 16,
     paddingBottom: 28,
     backgroundColor: Colors.primary,
+    borderRadius: 28,
   },
   headerRow: {
     flexDirection: 'row',
@@ -136,9 +139,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: 15, fontWeight: '700', color: Colors.primary },
-  greeting: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  subGreeting: { fontSize: 12, color: Colors.textPrimary, opacity: 0.6 },
+  avatarText: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  greeting: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  subGreeting: { fontSize: 12, color: '#FFFFFF', opacity: 0.75 },
   bellBtn: {
     width: 40,
     height: 40,
@@ -150,7 +153,7 @@ const styles = StyleSheet.create({
   headline: {
     fontSize: 26,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     lineHeight: 34,
     marginBottom: 18,
   },
@@ -159,12 +162,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.25)',
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 7,
   },
-  totalChipText: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
+  totalChipText: { fontSize: 13, fontWeight: '600', color: '#FFFFFF' },
   scroll: { flex: 1, backgroundColor: Colors.background },
   scrollContent: { paddingBottom: 24 },
   summaryRow: { paddingHorizontal: 20, paddingVertical: 16, gap: 12 },

@@ -1,0 +1,29 @@
+# ── Auth Tests ────────────────────────────────────────────────────────────────
+# Click "Send Request" above each ### block to run it
+
+### Register a new user
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Yousif",
+  "email": "yousif@test.com",
+  "password": "123456",
+  "phone": "+973 3300 0000"
+}
+
+### Login
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "yousif@test.com",
+  "password": "123456"
+}
+
+### Try a protected route WITHOUT token (expect 403)
+GET http://localhost:8080/api/dashboard/summary
+
+### Try a protected route WITH token (paste your token below, expect 404 not 403)
+GET http://localhost:8080/api/dashboard/summary
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ5b3VzaWZAdGVzdC5jb20iLCJpYXQiOjE3NzIwOTI1OTIsImV4cCI6MTc3MjE3ODk5Mn0.LpvH4ee1hHFWApZ23EAWBDgfnN8Jyu7g5qTU_4cyrQ7jgd3tTWZJUkD9z2LhTsU6

@@ -14,6 +14,7 @@ import { Colors } from '../../constants/colors';
 import InputField from '../../components/ui/InputField';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import OutlinedButton from '../../components/ui/OutlinedButton';
+import { loginApi, registerApi } from '../../services/api';
 
 export default function AuthScreen() {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -24,28 +25,50 @@ export default function AuthScreen() {
   const [regPassword, setRegPassword] = useState('');
   const [regConfirm, setRegConfirm] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   const router = useRouter();
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     const errs: Record<string, string> = {};
     if (!loginEmail) errs.loginEmail = 'Email is required';
     if (!loginPassword) errs.loginPassword = 'Password is required';
     setErrors(errs);
-    if (Object.keys(errs).length === 0) {
+    if (Object.keys(errs).length > 0) return;
+
+    setLoading(true);
+    setApiError('');
+    try {
+      await loginApi(loginEmail, loginPassword);
       router.replace('/(tabs)');
+    } catch (e: any) {
+      const msg = e?.response?.data?.message ?? e?.message ?? 'Login failed';
+      setApiError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     const errs: Record<string, string> = {};
     if (!regName) errs.regName = 'Full name is required';
     if (!regEmail) errs.regEmail = 'Email is required';
     if (!regPassword) errs.regPassword = 'Password is required';
     if (regPassword !== regConfirm) errs.regConfirm = 'Passwords do not match';
     setErrors(errs);
-    if (Object.keys(errs).length === 0) {
+    if (Object.keys(errs).length > 0) return;
+
+    setLoading(true);
+    setApiError('');
+    try {
+      await registerApi(regName, regEmail, regPassword);
       router.replace('/(tabs)');
+    } catch (e: any) {
+      const msg = e?.response?.data?.message ?? e?.message ?? 'Registration failed';
+      setApiError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -89,6 +112,13 @@ export default function AuthScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* API error banner */}
+          {!!apiError && (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorBannerText}>{apiError}</Text>
+            </View>
+          )}
+
           {/* Forms */}
           <View style={styles.form}>
             {activeTab === 'login' ? (
@@ -113,7 +143,7 @@ export default function AuthScreen() {
                 <TouchableOpacity style={styles.forgotRow}>
                   <Text style={styles.forgotText}>Forgot password?</Text>
                 </TouchableOpacity>
-                <PrimaryButton title="Login" onPress={handleLogin} />
+                <PrimaryButton title="Login" onPress={handleLogin} loading={loading} disabled={loading} />
                 <View style={styles.divider}>
                   <View style={styles.dividerLine} />
                   <Text style={styles.dividerText}>or</Text>
@@ -159,7 +189,7 @@ export default function AuthScreen() {
                   isPassword
                   error={errors.regConfirm}
                 />
-                <PrimaryButton title="Create Account" onPress={handleRegister} />
+                <PrimaryButton title="Create Account" onPress={handleRegister} loading={loading} disabled={loading} />
               </>
             )}
           </View>
@@ -255,5 +285,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
     marginHorizontal: 12,
+  },
+  errorBanner: {
+    backgroundColor: '#FEE2E2',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorBannerText: {
+    color: '#B91C1C',
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });
