@@ -5,6 +5,7 @@ import com.salaf.lend.entity.LendRequest;
 import com.salaf.lend.entity.LendStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,4 +19,5 @@ public interface LendRequestRepository extends JpaRepository<LendRequest, Long> 
     List<LendRequest> findByBorrower_LinkedUser(User linkedUser);
     List<LendRequest> findByBorrower_LinkedUserAndStatusIn(User linkedUser, List<LendStatus> statuses);
     Optional<LendRequest> findByIdAndBorrower_LinkedUser(Long id, User linkedUser);
+    List<LendRequest> findByLenderAndStatusAndDueDateBefore(User lender, LendStatus status, LocalDate date);
 }

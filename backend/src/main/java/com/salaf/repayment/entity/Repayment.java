@@ -3,7 +3,6 @@ package com.salaf.repayment.entity;
 import com.salaf.lend.entity.LendRequest;
 import jakarta.persistence.*;
 import lombok.Data;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -11,19 +10,18 @@ import java.time.LocalDateTime;
 @Table(name = "repayments")
 @Data
 public class Repayment {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "lend_request_id", nullable = false)
     private LendRequest lendRequest;
 
     @Column(nullable = false)
     private BigDecimal amountPaid;
 
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false)
     private LocalDateTime paidAt;
 
     private String note;

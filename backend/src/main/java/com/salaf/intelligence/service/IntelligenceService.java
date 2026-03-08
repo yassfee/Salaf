@@ -1,37 +1,97 @@
 package com.salaf.intelligence.service;
 
+import com.salaf.auth.entity.User;
+import com.salaf.intelligence.dto.IntelligenceSummaryResponse;
+import com.salaf.intelligence.dto.RiskyLendResponse;
+import com.salaf.lend.entity.LendRequest;
+import com.salaf.lend.entity.LendStatus;
+import com.salaf.lend.repository.LendRequestRepository;
+import com.salaf.repayment.entity.Repayment;
+import com.salaf.repayment.repository.RepaymentRepository;
 import org.springframework.stereotype.Service;
 
-// TODO: Inject LendRequestRepository and RepaymentRepository (constructor injection)
-//
-// TODO: Implement the following methods:
-//
-// getSummary(User currentUser)
-//   - Aggregate data across all lend requests belonging to currentUser
-//   - totalLent: sum of all LendRequest.amount where lender = currentUser
-//   - totalRepaid: sum of all Repayment.amountPaid for those lends
-//   - totalOutstanding: totalLent - totalRepaid
-//   - overdueCount: count of lends where dueDate < today AND status = ACTIVE
-//   - topBorrower: the borrower contact with the highest outstanding balance
-//   - Return as a DTO (create IntelligenceSummaryResponse DTO class)
-//
-// getRiskyLends(User currentUser)
-//   - Find all lend requests where:
-//     * lender = currentUser
-//     * status = ACTIVE
-//     * dueDate < LocalDate.now()
-//   - For each, calculate daysOverdue = ChronoUnit.DAYS.between(dueDate, today)
-//   - Return as a list of DTO objects with borrower info and overdue details
-//
-// getTrends(User currentUser) [Optional - FR-26]
-//   - Group lend requests by month (last 6 months)
-//   - Sum amounts per month
-//   - Return as a list of { month: 2025-01, totalLent: BigDecimal }
-//   - Useful for displaying a chart on the analytics/intelligence screen
-//
-// HINT: Use Java Streams for aggregation logic (no native SQL needed)
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class IntelligenceService {
-    // TODO: implement methods here
+    private final LendRequestRepository lendRequestRepository;
+    private final RepaymentRepository repaymentRepository;
+
+    public IntelligenceService(LendRequestRepository lendRequestRepository, 
+                              RepaymentRepository repaymentRepository) {
+        this.lendRequestRepository = lendRequestRepository;
+        this.repaymentRepository = repaymentRepository;
+    }
+
+    public IntelligenceSummaryResponse getSummary(User currentUser) {
+        List<LendRequest> allLends = lendRequestRepository.findByLender(currentUser);
+
+        // Calculate total lent
+        BigDecimal totalLent = allLends.stream()
+                .filter(l -> l.getStatus() != LendStatus.REJECTED && l.getStatus() != LendStatus.PENDING)
+                .map(LendRequest::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Calculate total repaid
+        BigDecimal totalRepaid = allLends.stream()
+                .map(l -> l.getAmount().subtract(l.getRemainingBalance()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Calculate total outstanding
+        BigDecimal totalOutstanding = totalLent.subtract(totalRepaid);
+
+        // Count overdue lends
+        LocalDate today = LocalDate.now();
+        int overdueCount = (int) allLends.stream()
+                .filter(l -> (l.getStatus() == LendStatus.ACTIVE || l.getStatus() == LendStatus.PARTIALLY_PAID) 
+                        && l.getDueDate().isBefore(today))
+                .count();
+
+        // Find top borrower
+        Map<String, BigDecimal> borrowerBalances = allLends.stream()
+                .filter(l -> l.getRemainingBalance().compareTo(BigDecimal.ZERO) > 0)
+                .collect(Collectors.groupingBy(
+                        l -> l.getBorrower().getName(),
+                        Collectors.mapping(LendRequest::getRemainingBalance, 
+                                Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
+                ));
+
+        String topBorrower = borrowerBalances.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse("None");
+
+        return new IntelligenceSummaryResponse(
+                totalLent,
+                totalRepaid,
+                totalOutstanding,
+                overdueCount,
+                topBorrower
+        );
+    }
+
+    public List<RiskyLendResponse> getRiskyLends(User currentUser) {
+        LocalDate today = LocalDate.now();
+        
+        return lendRequestRepository.findByLenderAndStatusAndDueDateBefore(
+                currentUser, LendStatus.ACTIVE, today)
+                .stream()
+                .map(lend -> {
+                    long daysOverdue = ChronoUnit.DAYS.between(lend.getDueDate(), today);
+                    return new RiskyLendResponse(
+                            lend.getId(),
+                            lend.getBorrower().getName(),
+                            lend.getAmount(),
+                            lend.getRemainingBalance(),
+                            lend.getDueDate(),
+                            daysOverdue
+                    );
+                })
+                .collect(Collectors.toList());
+    }
 }
