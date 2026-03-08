@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
-import { getLendById, getIncomingLendById, LendResponse } from '../../services/api';
+import { getLendById, getIncomingLendById, recordRepayment, LendResponse } from '../../services/api';
 import CardContainer from '../../components/ui/CardContainer';
 import StatusBadge from '../../components/ui/StatusBadge';
 import ProgressBar from '../../components/ui/ProgressBar';
@@ -23,6 +23,8 @@ export default function LendDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [repayAmount, setRepayAmount] = useState('');
+  const [repayNote, setRepayNote] = useState('');
+  const [repayLoading, setRepayLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -158,7 +160,9 @@ export default function LendDetailsScreen() {
       </ScrollView>
 
       <View style={styles.bottomActions}>
-        <PrimaryButton title="+ Record Repayment" onPress={() => setModalVisible(true)} />
+        {isBorrowerView && lend.status !== 'PAID' && lend.status !== 'REJECTED' && lend.status !== 'PENDING' && (
+          <PrimaryButton title="+ Record Repayment" onPress={() => setModalVisible(true)} />
+        )}
         <View style={styles.spacer} />
         <OutlinedButton
           title="🧾 Download Receipt"
@@ -181,16 +185,39 @@ export default function LendDetailsScreen() {
                 placeholderTextColor={Colors.textSecondary}
               />
             </View>
+            <TextInput
+              style={[styles.modalInput, styles.noteInput]}
+              placeholder="Note (optional)"
+              value={repayNote}
+              onChangeText={setRepayNote}
+              placeholderTextColor={Colors.textSecondary}
+            />
             <PrimaryButton
-              title="Record"
-              onPress={() => {
-                setModalVisible(false);
-                setRepayAmount('');
-                Alert.alert('Coming Soon', 'Repayment recording will be available soon.');
+              title={repayLoading ? 'Recording...' : 'Record'}
+              onPress={async () => {
+                const amount = parseFloat(repayAmount);
+                if (!repayAmount || isNaN(amount) || amount <= 0) {
+                  Alert.alert('Invalid amount', 'Please enter a valid amount.');
+                  return;
+                }
+                setRepayLoading(true);
+                try {
+                  await recordRepayment(lend.id, amount, repayNote || undefined);
+                  setModalVisible(false);
+                  setRepayAmount('');
+                  setRepayNote('');
+                  const fetch = isBorrowerView ? getIncomingLendById : getLendById;
+                  const updated = await fetch(lend.id);
+                  setLend(updated);
+                } catch (e: any) {
+                  Alert.alert('Error', e?.response?.data?.message ?? 'Failed to record repayment.');
+                } finally {
+                  setRepayLoading(false);
+                }
               }}
             />
             <View style={styles.spacer} />
-            <OutlinedButton title="Cancel" onPress={() => setModalVisible(false)} />
+            <OutlinedButton title="Cancel" onPress={() => { setModalVisible(false); setRepayAmount(''); setRepayNote(''); }} />
           </View>
         </View>
       </Modal>
@@ -246,4 +273,5 @@ const styles = StyleSheet.create({
   inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 16, height: 56, marginBottom: 16 },
   bdPrefix: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary, marginRight: 8 },
   modalInput: { flex: 1, fontSize: 20, fontWeight: '600', color: Colors.textPrimary },
+  noteInput: { fontSize: 14, fontWeight: '400', borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 16, height: 48, marginBottom: 16 },
 });

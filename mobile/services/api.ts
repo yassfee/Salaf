@@ -245,4 +245,86 @@ export async function getDueSoon(): Promise<DueSoonLend[]> {
   return res.data;
 }
 
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+export interface NotificationItem {
+  id: number;
+  lendId: number;
+  senderName: string;
+  borrowerName: string;
+  amount: number;
+  amountPaid: number;
+  remainingBalance: number;
+  note?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export async function sendNotification(lendId: number, note: string): Promise<NotificationItem> {
+  const res = await api.post<NotificationItem>(`/api/notifications/lend/${lendId}`, { note });
+  return res.data;
+}
+
+export async function getNotifications(): Promise<NotificationItem[]> {
+  const res = await api.get<NotificationItem[]>('/api/notifications');
+  return res.data;
+}
+
+export async function markNotificationRead(id: number): Promise<void> {
+  await api.patch(`/api/notifications/${id}/read`);
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  await api.patch('/api/notifications/read-all');
+}
+
+export async function deleteNotification(id: number): Promise<void> {
+  await api.delete(`/api/notifications/${id}`);
+}
+
+export async function getUnreadNotificationCount(): Promise<number> {
+  const res = await api.get<{ count: number }>('/api/notifications/unread-count');
+  return res.data.count;
+}
+
+// ── Repayment Plan ────────────────────────────────────────────────────────────
+
+export interface RepaymentPlanItem {
+  rank: number;
+  lendId: number;
+  lenderName: string;
+  totalAmount: number;
+  amountPaid: number;
+  remainingBalance: number;
+  dueDate: string;
+  status: string;
+  suggestedPayment: number;
+  priority: 'OVERDUE' | 'DUE_SOON' | 'UPCOMING' | 'LATER';
+  reason: string;
+  daysUntilDue: number;
+}
+
+export type RepaymentStrategy = 'urgency' | 'snowball' | 'avalanche';
+
+export async function getRepaymentPlan(
+  budget?: number,
+  strategy: RepaymentStrategy = 'urgency',
+): Promise<RepaymentPlanItem[]> {
+  const params: Record<string, string> = { strategy };
+  if (budget !== undefined && budget > 0) params.budget = budget.toString();
+  const res = await api.get<RepaymentPlanItem[]>('/api/intelligence/repayment-plan', { params });
+  return res.data;
+}
+
+// ── Repayments ────────────────────────────────────────────────────────────────
+
+export async function recordRepayment(
+  lendId: number,
+  amountPaid: number,
+  note?: string,
+): Promise<{ message: string; amountPaid: number; remainingBalance: number; status: string }> {
+  const res = await api.post(`/api/lends/${lendId}/repayments`, { amountPaid, note });
+  return res.data;
+}
+
 export default api;

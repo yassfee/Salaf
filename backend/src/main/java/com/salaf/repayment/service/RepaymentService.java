@@ -30,9 +30,9 @@ public class RepaymentService {
 
     @Transactional
     public Map<String, Object> recordRepayment(Long lendId, RepaymentRequest request, User currentUser) {
-        // Find and verify ownership
-        LendRequest lendRequest = lendRequestRepository.findByIdAndLender(lendId, currentUser)
-                .orElseThrow(() -> new IllegalArgumentException("Lend request not found or does not belong to you"));
+        // Borrower records the repayment — verify the current user is the borrower
+        LendRequest lendRequest = lendRequestRepository.findByIdAndBorrower_LinkedUser(lendId, currentUser)
+                .orElseThrow(() -> new IllegalArgumentException("Lend request not found or you are not the borrower"));
 
         // Validate amount
         if (request.getAmountPaid().compareTo(BigDecimal.ZERO) <= 0) {
@@ -75,10 +75,12 @@ public class RepaymentService {
     }
 
     public List<RepaymentResponse> getRepaymentHistory(Long lendId, User currentUser) {
-        // Verify ownership
-        lendRequestRepository.findByIdAndLender(lendId, currentUser)
-                .orElseThrow(() -> new IllegalArgumentException("Lend request not found or does not belong to you"));
-
+        // Allow both lender and borrower to view history
+        boolean isLender = lendRequestRepository.findByIdAndLender(lendId, currentUser).isPresent();
+        boolean isBorrower = lendRequestRepository.findByIdAndBorrower_LinkedUser(lendId, currentUser).isPresent();
+        if (!isLender && !isBorrower) {
+            throw new IllegalArgumentException("Lend request not found or access denied");
+        }
         return repaymentRepository.findByLendRequestIdOrderByPaidAtDesc(lendId)
                 .stream()
                 .map(RepaymentResponse::fromEntity)
@@ -87,7 +89,8 @@ public class RepaymentService {
 
     public Map<String, Object> getRepaymentSummary(Long lendId, User currentUser) {
         LendRequest lendRequest = lendRequestRepository.findByIdAndLender(lendId, currentUser)
-                .orElseThrow(() -> new IllegalArgumentException("Lend request not found or does not belong to you"));
+                .or(() -> lendRequestRepository.findByIdAndBorrower_LinkedUser(lendId, currentUser))
+                .orElseThrow(() -> new IllegalArgumentException("Lend request not found or access denied"));
 
         List<Repayment> repayments = repaymentRepository.findByLendRequestId(lendId);
         

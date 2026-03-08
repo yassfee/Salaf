@@ -54,11 +54,7 @@ export default function CreateBorrowRequestScreen() {
     try {
       setSubmitting(true);
       await createBorrowRequest(selectedContact!, parseFloat(amount), dueDate, note || undefined);
-      Alert.alert(
-        'Request Sent!',
-        `Your borrow request has been sent to ${chosenContact?.name}. They will be notified to review it.`,
-        [{ text: 'OK', onPress: () => router.back() }],
-      );
+      router.replace({ pathname: '/(tabs)', params: { toast: '2' } } as any);
     } catch (e: any) {
       const msg = e?.response?.data?.message ?? 'Failed to send borrow request.';
       Alert.alert('Error', msg);

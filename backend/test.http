@@ -1,11 +1,13 @@
 # ── Variables ─────────────────────────────────────────────────────────────────
-# After login, copy the token value and paste it in @token below
+# Yousif = lender, Ali = borrower
+# After each login, copy the token and paste into the right variable below
 @base = http://localhost:8080
-@token = PASTE_YOUR_TOKEN_HERE
+@token      = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ5b3VzaWZAdGVzdC5jb20iLCJpYXQiOjE3NzI5NzA0OTUsImV4cCI6MTc3MzA1Njg5NX0.v73-i1wF2ZuIkV_Nbme_7DsiM89vQXCrTqSgAfg9QsywOAZdFeqYM6T1fFny7tYa
+@aliToken   = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhbGlAdGVzdC5jb20iLCJpYXQiOjE3NzI5NzA1MjQsImV4cCI6MTc3MzA1NjkyNH0.GhPrQuf3L6DVlmd2LT8sl3uPtEq86koZpVoTgionks5A6pL_sCnFcgzJpFeOZMp6
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
+# ── STEP 1: Register Yousif (lender) ──────────────────────────────────────────
 
-### 1. Register
+### 1a. Register Yousif
 POST {{base}}/api/auth/register
 Content-Type: application/json
 
@@ -16,7 +18,7 @@ Content-Type: application/json
   "phone": "+973 3300 0000"
 }
 
-### 2. Login  ← copy "token" from the response and paste into @token above
+### 1b. Login as Yousif  ← paste token into @token above
 POST {{base}}/api/auth/login
 Content-Type: application/json
 
@@ -25,63 +27,140 @@ Content-Type: application/json
   "password": "123456"
 }
 
-# ── Contacts ──────────────────────────────────────────────────────────────────
+# ── STEP 2: Register Ali (borrower) ───────────────────────────────────────────
 
-### 3. Create contact
+### 2a. Register Ali
+POST {{base}}/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Ali Hassan",
+  "email": "ali@test.com",
+  "password": "123456",
+  "phone": "+973 3300 1111"
+}
+
+### 2b. Login as Ali  ← paste token into @aliToken above
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "ali@test.com",
+  "password": "123456"
+}
+
+# ── STEP 3: Yousif adds Ali as a contact ──────────────────────────────────────
+# Uses @token (Yousif). Note the contact "id" from the response.
+
+### 3. Add Ali as contact
 POST {{base}}/api/contacts
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "name": "Ali Hassan",
-  "phone": "+973 3300 1111",
-  "email": "ali@test.com"
+  "linkedUserEmail": "ali@test.com"
 }
 
-### 4. Get all contacts
+### 3b. Get contacts (verify Ali appears)
 GET {{base}}/api/contacts
 Authorization: Bearer {{token}}
 
-### 5. Delete contact (replace 1 with real id)
-DELETE {{base}}/api/contacts/1
-Authorization: Bearer {{token}}
+# ── STEP 4: Yousif creates a lend for Ali ─────────────────────────────────────
+# Replace contactId with Ali's contact id from step 3. Note the lend "id".
 
-# ── Lends ─────────────────────────────────────────────────────────────────────
-
-### 6. Create lend (replace contactId with the id from step 3)
+### 4. Create lend  ← replace contactId with real id
 POST {{base}}/api/lends
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
   "contactId": 1,
-  "amount": 100.000,
+  "amount": 100.00,
   "dueDate": "2027-06-01",
   "note": "Help for car repair"
 }
 
-### 7. Get all lends
+### 4b. Get all lends (Yousif's view)
 GET {{base}}/api/lends
 Authorization: Bearer {{token}}
 
-### 8. Get lend by id (replace 1 with real id)
-GET {{base}}/api/lends/1
+# ── STEP 5: Ali accepts the lend ──────────────────────────────────────────────
+# Uses @aliToken. Replace 1 with the real lend id. Status becomes ACTIVE.
+
+### 5. Ali accepts the lend  ← replace 6 with real lend id
+PATCH {{base}}/api/lends/6/accept
+Authorization: Bearer {{aliToken}}
+
+# ── STEP 6: Record repayments (as Yousif/lender) ──────────────────────────────
+# Replace 1 with the real lend id. Expect: remainingBalance=50, status=PARTIALLY_PAID
+
+### 6a. First repayment (50 of 100)
+POST {{base}}/api/lends/6/repayments
+Content-Type: application/json
 Authorization: Bearer {{token}}
 
-### 9. Accept lend (replace 1 with real id)
-PATCH {{base}}/api/lends/1/accept
+{
+  "amountPaid": 50.00,
+  "note": "First partial payment"
+}
+
+### 6b. Second repayment (remaining 50) → status becomes PAID
+POST {{base}}/api/lends/6/repayments
+Content-Type: application/json
 Authorization: Bearer {{token}}
 
-### 10. Reject lend (replace 1 with real id)
-PATCH {{base}}/api/lends/1/reject
+{
+  "amountPaid": 50.00,
+  "note": "Final payment"
+}
+
+### 6c. Get repayment history (should show 2 records)
+GET {{base}}/api/lends/6/repayments
 Authorization: Bearer {{token}}
 
-# ── Dashboard ─────────────────────────────────────────────────────────────────
+### 6d. Get repayment summary
+GET {{base}}/api/lends/6/repayments/summary
+Authorization: Bearer {{token}}
 
-### 11. Dashboard summary
+# ── STEP 7: Intelligence ───────────────────────────────────────────────────────
+
+### 7a. Intelligence summary (totalLent, totalRepaid, outstanding, overdueCount, topBorrower)
+GET {{base}}/api/intelligence/summary
+Authorization: Bearer {{token}}
+
+### 7b. Risky lends — create a lend with past dueDate first to see results
+GET {{base}}/api/intelligence/risk
+Authorization: Bearer {{token}}
+
+# ── STEP 8: Overdue test (optional) ───────────────────────────────────────────
+# Create a lend with a past dueDate, accept it as Ali, then check /risk again
+
+### 8a. Create overdue lend
+POST {{base}}/api/lends
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "contactId": 1,
+  "amount": 200.00,
+  "dueDate": "2020-01-01",
+  "note": "Old debt"
+}
+
+### 8b. Ali accepts it  ← replace 7 with the real lend id from step 8a response
+PATCH {{base}}/api/lends/7/accept
+Authorization: Bearer {{aliToken}}
+
+### 8c. Check risky lends (should now show 1 overdue)
+GET {{base}}/api/intelligence/risk
+Authorization: Bearer {{token}}
+
+# ── Dashboard ──────────────────────────────────────────────────────────────────
+
+### Dashboard summary
 GET {{base}}/api/dashboard/summary
 Authorization: Bearer {{token}}
 
-### 12. Due soon
+### Due soon
 GET {{base}}/api/dashboard/due-soon
 Authorization: Bearer {{token}}

@@ -48,21 +48,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // 5. Only authenticate if not already authenticated
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            try {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                // 6. Validate token against the loaded user
+                if (jwtService.isTokenValid(token, userDetails)) {
 
-            // 6. Validate token against the loaded user
-            if (jwtService.isTokenValid(token, userDetails)) {
-
-                // 7. Build authentication token and set it in the security context
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                    // 7. Build authentication token and set it in the security context
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            } catch (Exception e) {
+                // Stale or invalid token — skip authentication, let the request proceed unauthenticated
             }
         }
 

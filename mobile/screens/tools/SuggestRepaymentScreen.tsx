@@ -1,106 +1,89 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  TextInput, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
-import { MOCK_LENDS } from '../../constants/mockData';
-import { Lend } from '../../types';
+import { getRepaymentPlan, RepaymentPlanItem, RepaymentStrategy } from '../../services/api';
 import CardContainer from '../../components/ui/CardContainer';
 import StatusBadge from '../../components/ui/StatusBadge';
 import ProgressBar from '../../components/ui/ProgressBar';
 import PrimaryButton from '../../components/ui/PrimaryButton';
-import { formatCurrency } from '../../utils/formatCurrency';
+import { formatCurrency, formatDate } from '../../utils/formatCurrency';
+import { LendStatus } from '../../types';
 
-interface Suggestion {
-  lend: Lend;
-  suggestedAmount: number;
-  reason: string;
-  rank: number;
-}
+const STRATEGIES: { key: RepaymentStrategy; label: string; icon: string; desc: string }[] = [
+  { key: 'urgency',  label: 'Urgency',  icon: 'alert-circle-outline', desc: 'Overdue & soonest due first' },
+  { key: 'snowball', label: 'Snowball', icon: 'snow-outline',          desc: 'Smallest balance first' },
+  { key: 'avalanche',label: 'Avalanche',icon: 'trending-down-outline', desc: 'Largest balance first' },
+];
 
-function generateSuggestions(budget: number, lends: Lend[]): Suggestion[] {
-  const active = lends
-    .filter((l) => l.status !== 'PAID' && l.status !== 'REJECTED')
-    .sort((a, b) => {
-      if (a.status === 'OVERDUE' && b.status !== 'OVERDUE') return -1;
-      if (b.status === 'OVERDUE' && a.status !== 'OVERDUE') return 1;
-      return new Date(a.due).getTime() - new Date(b.due).getTime();
-    });
-
-  const suggestions: Suggestion[] = [];
-  let remaining = budget;
-
-  active.forEach((lend, index) => {
-    const owed = lend.amount - lend.paid;
-    const pay = Math.min(owed, remaining);
-    if (pay <= 0) return;
-
-    const daysOverdue = Math.floor(
-      (new Date().getTime() - new Date(lend.due).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    const daysToDue = Math.floor(
-      (new Date(lend.due).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    let reason = '';
-    if (lend.status === 'OVERDUE') {
-      reason = `Overdue by ${Math.abs(daysOverdue)} day(s)`;
-    } else if (daysToDue <= 7) {
-      reason = `Due in ${daysToDue} day(s)`;
-    } else {
-      reason = `Due ${new Date(lend.due).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`;
-    }
-
-    suggestions.push({ lend, suggestedAmount: pay, reason, rank: index + 1 });
-    remaining -= pay;
-  });
-
-  return suggestions;
-}
+const PRIORITY_COLOR: Record<string, string> = {
+  OVERDUE:  Colors.danger,
+  DUE_SOON: '#F59E0B',
+  UPCOMING: Colors.primary,
+  LATER:    Colors.textSecondary,
+};
 
 export default function SuggestRepaymentScreen() {
   const router = useRouter();
   const [amount, setAmount] = useState('');
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [strategy, setStrategy] = useState<RepaymentStrategy>('urgency');
+  const [plan, setPlan] = useState<RepaymentPlanItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [generated, setGenerated] = useState(false);
 
   const budget = parseFloat(amount) || 0;
-  const totalAssigned = suggestions.reduce((s, x) => s + x.suggestedAmount, 0);
-  const leftover = budget - totalAssigned;
+  const totalAssigned = plan.reduce((s, x) => s + x.suggestedPayment, 0);
+  const leftover = Math.max(0, budget - totalAssigned);
+  const hasBudget = budget > 0;
 
-  const handleSuggest = () => {
-    if (budget <= 0) {
-      Alert.alert('Invalid', 'Please enter an amount greater than 0.');
-      return;
+  const handleSuggest = async () => {
+    try {
+      setLoading(true);
+      const result = await getRepaymentPlan(hasBudget ? budget : undefined, strategy);
+      setPlan(result);
+      setGenerated(true);
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.message ?? 'Failed to generate plan.');
+    } finally {
+      setLoading(false);
     }
-    const result = generateSuggestions(budget, MOCK_LENDS);
-    setSuggestions(result);
-    setShowSuggestions(true);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Repayment Suggestion</Text>
+        <Text style={styles.headerTitle}>Repayment Planner</Text>
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Amount Input */}
-        <Text style={styles.label}>How much can you pay today?</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {/* Strategy selector */}
+        <Text style={styles.sectionLabel}>Strategy</Text>
+        <View style={styles.strategyRow}>
+          {STRATEGIES.map((s) => (
+            <TouchableOpacity
+              key={s.key}
+              style={[styles.strategyCard, strategy === s.key && styles.strategyCardActive]}
+              onPress={() => setStrategy(s.key)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name={s.icon as any} size={20} color={strategy === s.key ? '#fff' : Colors.textSecondary} />
+              <Text style={[styles.strategyLabel, strategy === s.key && styles.strategyLabelActive]}>{s.label}</Text>
+              <Text style={[styles.strategyDesc, strategy === s.key && styles.strategyDescActive]}>{s.desc}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Budget input (optional) */}
+        <Text style={styles.sectionLabel}>Available Budget <Text style={styles.optional}>(optional)</Text></Text>
         <View style={styles.amountRow}>
           <Text style={styles.bdLabel}>BD</Text>
           <TextInput
@@ -110,79 +93,117 @@ export default function SuggestRepaymentScreen() {
             value={amount}
             onChangeText={setAmount}
             keyboardType="decimal-pad"
-            textAlign="center"
           />
         </View>
+        <Text style={styles.hint}>
+          {hasBudget
+            ? 'Budget will be distributed across your lends by priority.'
+            : 'No budget entered — showing full priority order.'}
+        </Text>
 
-        <PrimaryButton title="💡 Suggest Plan" onPress={handleSuggest} />
+        <PrimaryButton title={loading ? 'Generating...' : '💡 Generate Plan'} onPress={handleSuggest} disabled={loading} />
+        {loading && <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />}
 
-        {/* Suggestions */}
-        {showSuggestions && (
-          <View style={styles.suggestionsSection}>
-            <Text style={styles.sectionTitle}>Suggested Distribution</Text>
-            {suggestions.length === 0 ? (
+        {/* Plan results */}
+        {generated && !loading && (
+          <View style={styles.resultsSection}>
+            <Text style={styles.sectionLabel}>
+              Your Repayment Plan
+              {hasBudget ? ` for ${formatCurrency(budget)}` : ''}
+            </Text>
+
+            {plan.length === 0 ? (
               <CardContainer>
-                <Text style={styles.emptyText}>
-                  No active lends to distribute this amount to.
-                </Text>
+                <View style={styles.emptyWrap}>
+                  <Ionicons name="checkmark-circle-outline" size={40} color={Colors.success} />
+                  <Text style={styles.emptyTitle}>All clear!</Text>
+                  <Text style={styles.emptyText}>You have no active borrowed lends to pay back.</Text>
+                </View>
               </CardContainer>
             ) : (
-              suggestions.map((s) => {
-                const progress = s.lend.amount > 0 ? s.lend.paid / s.lend.amount : 0;
+              plan.map((item) => {
+                const progress = item.totalAmount > 0 ? item.amountPaid / item.totalAmount : 0;
                 return (
-                  <CardContainer key={s.lend.id} style={styles.suggCard}>
-                    <View style={styles.suggHeader}>
-                      <View style={styles.rankBadge}>
-                        <Text style={styles.rankText}>{s.rank}</Text>
+                  <TouchableOpacity
+                    key={item.lendId}
+                    activeOpacity={0.85}
+                    onPress={() => router.push(`/lend-details?id=${item.lendId}&incoming=true`)}
+                  >
+                    <CardContainer style={styles.planCard}>
+                      {/* Rank + header */}
+                      <View style={styles.planHeader}>
+                        <View style={styles.rankBadge}>
+                          <Text style={styles.rankText}>{item.rank}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.lenderName}>{item.lenderName}</Text>
+                          <View style={styles.priorityRow}>
+                            <View style={[styles.priorityDot, { backgroundColor: PRIORITY_COLOR[item.priority] }]} />
+                            <Text style={[styles.reasonText, { color: PRIORITY_COLOR[item.priority] }]}>{item.reason}</Text>
+                          </View>
+                        </View>
+                        <StatusBadge status={item.status as LendStatus} />
                       </View>
-                      <View style={styles.suggInfo}>
-                        <Text style={styles.suggContact}>{s.lend.contact}</Text>
-                        <Text style={styles.suggReason}>{s.reason}</Text>
+
+                      {/* Amounts row */}
+                      <View style={styles.amountsRow}>
+                        <View style={styles.amountChip}>
+                          <Text style={styles.amountChipLabel}>Total</Text>
+                          <Text style={styles.amountChipValue}>{formatCurrency(item.totalAmount)}</Text>
+                        </View>
+                        <View style={styles.amountChip}>
+                          <Text style={styles.amountChipLabel}>Paid</Text>
+                          <Text style={[styles.amountChipValue, { color: Colors.success }]}>{formatCurrency(item.amountPaid)}</Text>
+                        </View>
+                        <View style={styles.amountChip}>
+                          <Text style={styles.amountChipLabel}>Remaining</Text>
+                          <Text style={[styles.amountChipValue, { color: Colors.danger }]}>{formatCurrency(item.remainingBalance)}</Text>
+                        </View>
                       </View>
-                      <StatusBadge status={s.lend.status} />
-                    </View>
-                    <Text style={styles.payAmount}>Pay {formatCurrency(s.suggestedAmount)}</Text>
-                    <View style={styles.progressWrapper}>
-                      <ProgressBar progress={progress} />
-                    </View>
-                  </CardContainer>
+
+                      {/* Progress bar */}
+                      <View style={styles.progressWrapper}>
+                        <ProgressBar progress={progress} />
+                      </View>
+
+                      {/* Suggested payment */}
+                      <View style={styles.suggestedRow}>
+                        <Ionicons name="arrow-forward-circle" size={18} color={Colors.primary} />
+                        <Text style={styles.suggestedLabel}>
+                          {hasBudget ? 'Suggested payment: ' : 'Pay: '}
+                          <Text style={styles.suggestedAmount}>{formatCurrency(item.suggestedPayment)}</Text>
+                        </Text>
+                        <Text style={styles.dueLabel}>Due {formatDate(item.dueDate)}</Text>
+                      </View>
+                    </CardContainer>
+                  </TouchableOpacity>
                 );
               })
             )}
 
-            {/* Summary */}
-            <CardContainer style={styles.summaryCard}>
-              <View style={styles.summaryRow}>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Assigned</Text>
-                  <Text style={[styles.summaryValue, { color: Colors.success }]}>
-                    {formatCurrency(totalAssigned)}
-                  </Text>
+            {/* Budget summary */}
+            {hasBudget && plan.length > 0 && (
+              <CardContainer style={styles.summaryCard}>
+                <View style={styles.summaryRow}>
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryLabel}>Assigned</Text>
+                    <Text style={[styles.summaryValue, { color: Colors.success }]}>{formatCurrency(totalAssigned)}</Text>
+                  </View>
+                  <View style={styles.summaryDivider} />
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryLabel}>Leftover</Text>
+                    <Text style={[styles.summaryValue, { color: leftover > 0 ? Colors.warning : Colors.success }]}>
+                      {formatCurrency(leftover)}
+                    </Text>
+                  </View>
+                  <View style={styles.summaryDivider} />
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryLabel}>Lends covered</Text>
+                    <Text style={styles.summaryValue}>{plan.length}</Text>
+                  </View>
                 </View>
-                <View style={styles.summaryDivider} />
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Left</Text>
-                  <Text
-                    style={[
-                      styles.summaryValue,
-                      { color: leftover > 0 ? Colors.warning : Colors.success },
-                    ]}
-                  >
-                    {formatCurrency(Math.max(0, leftover))}
-                  </Text>
-                </View>
-              </View>
-            </CardContainer>
-
-            <View style={styles.spacer} />
-            <PrimaryButton
-              title="✅ Apply This Plan"
-              onPress={() => {
-                Alert.alert('Plan Applied', 'Your repayment plan has been applied!', [
-                  { text: 'OK', onPress: () => router.back() },
-                ]);
-              }}
-            />
+              </CardContainer>
+            )}
           </View>
         )}
       </ScrollView>
@@ -192,93 +213,55 @@ export default function SuggestRepaymentScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12 },
   backBtn: { padding: 4, marginRight: 8 },
-  headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    textAlign: 'center',
-  },
+  headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center' },
   headerRight: { width: 32 },
   scroll: { paddingHorizontal: 20, paddingBottom: 40 },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    textAlign: 'center',
-    marginTop: 16,
-    marginBottom: 20,
-  },
-  amountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginBottom: 20,
-    backgroundColor: Colors.primaryLight,
-  },
-  bdLabel: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginRight: 8,
-  },
-  amountInput: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: Colors.primary,
-    minWidth: 120,
-  },
-  suggestionsSection: { marginTop: 28 },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    marginBottom: 14,
-  },
-  suggCard: { marginBottom: 12 },
-  suggHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  rankBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  rankText: { color: Colors.primary, fontWeight: '700', fontSize: 13 },
-  suggInfo: { flex: 1 },
-  suggContact: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  suggReason: { fontSize: 12, color: Colors.textSecondary },
-  payAmount: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 10,
-  },
-  progressWrapper: {},
-  summaryCard: { marginTop: 4 },
+  sectionLabel: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary, marginTop: 20, marginBottom: 10 },
+  optional: { fontWeight: '400', color: Colors.textSecondary },
+  // Strategy
+  strategyRow: { flexDirection: 'row', gap: 10 },
+  strategyCard: { flex: 1, borderRadius: 14, borderWidth: 1.5, borderColor: Colors.border, padding: 10, alignItems: 'center', gap: 4, backgroundColor: Colors.card },
+  strategyCardActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  strategyLabel: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary },
+  strategyLabelActive: { color: '#fff' },
+  strategyDesc: { fontSize: 9, color: Colors.textSecondary, textAlign: 'center' },
+  strategyDescActive: { color: 'rgba(255,255,255,0.8)' },
+  // Budget input
+  amountRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 12, backgroundColor: Colors.primaryLight, marginBottom: 8 },
+  bdLabel: { fontSize: 20, fontWeight: '700', color: Colors.primary, marginRight: 8 },
+  amountInput: { fontSize: 28, fontWeight: '700', color: Colors.primary, flex: 1 },
+  hint: { fontSize: 12, color: Colors.textSecondary, marginBottom: 16, textAlign: 'center' },
+  // Results
+  resultsSection: { marginTop: 8 },
+  planCard: { marginBottom: 12 },
+  planHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 },
+  rankBadge: { width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  rankText: { color: Colors.primary, fontWeight: '700', fontSize: 14 },
+  lenderName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  priorityRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  priorityDot: { width: 6, height: 6, borderRadius: 3 },
+  reasonText: { fontSize: 11, fontWeight: '500' },
+  amountsRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  amountChip: { flex: 1, backgroundColor: Colors.background, borderRadius: 8, padding: 6, alignItems: 'center' },
+  amountChipLabel: { fontSize: 9, color: Colors.textSecondary, marginBottom: 2 },
+  amountChipValue: { fontSize: 11, fontWeight: '700', color: Colors.textPrimary },
+  progressWrapper: { marginBottom: 10 },
+  suggestedRow: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.primaryLight, borderRadius: 10, padding: 10 },
+  suggestedLabel: { flex: 1, fontSize: 13, color: Colors.textPrimary },
+  suggestedAmount: { fontWeight: '700', color: Colors.primary },
+  dueLabel: { fontSize: 11, color: Colors.textSecondary },
+  // Summary
+  summaryCard: { marginTop: 4, marginBottom: 16 },
   summaryRow: { flexDirection: 'row', alignItems: 'center' },
   summaryItem: { flex: 1, alignItems: 'center' },
-  summaryLabel: { fontSize: 12, color: Colors.textSecondary, marginBottom: 4 },
-  summaryValue: { fontSize: 16, fontWeight: '700' },
+  summaryLabel: { fontSize: 11, color: Colors.textSecondary, marginBottom: 4 },
+  summaryValue: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   summaryDivider: { width: 1, height: 40, backgroundColor: Colors.border },
-  emptyText: { textAlign: 'center', color: Colors.textSecondary, fontSize: 14 },
-  spacer: { height: 16 },
+  // Empty
+  emptyWrap: { alignItems: 'center', paddingVertical: 16, gap: 8 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  emptyText: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center' },
+  warning: { color: '#F59E0B' },
 });

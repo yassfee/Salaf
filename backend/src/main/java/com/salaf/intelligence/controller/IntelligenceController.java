@@ -2,12 +2,14 @@ package com.salaf.intelligence.controller;
 
 import com.salaf.auth.entity.User;
 import com.salaf.intelligence.dto.IntelligenceSummaryResponse;
+import com.salaf.intelligence.dto.RepaymentPlanItem;
 import com.salaf.intelligence.dto.RiskyLendResponse;
 import com.salaf.intelligence.service.IntelligenceService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -21,25 +23,24 @@ public class IntelligenceController {
 
     @GetMapping("/summary")
     public ResponseEntity<IntelligenceSummaryResponse> getSummary(@AuthenticationPrincipal User currentUser) {
-        IntelligenceSummaryResponse summary = intelligenceService.getSummary(currentUser);
-        return ResponseEntity.ok(summary);
+        return ResponseEntity.ok(intelligenceService.getSummary(currentUser));
     }
 
     @GetMapping("/risk")
     public ResponseEntity<List<RiskyLendResponse>> getRiskyLends(@AuthenticationPrincipal User currentUser) {
-        List<RiskyLendResponse> riskyLends = intelligenceService.getRiskyLends(currentUser);
-        return ResponseEntity.ok(riskyLends);
+        return ResponseEntity.ok(intelligenceService.getRiskyLends(currentUser));
     }
 
-    @GetMapping("/trust-score/{contactId}")
-    public ResponseEntity<String> getTrustScore(@PathVariable Long contactId, @AuthenticationPrincipal User currentUser) {
-        // Optional endpoint - can be implemented later
-        return ResponseEntity.ok("Trust score feature coming soon");
-    }
-
-    @GetMapping("/suggestions")
-    public ResponseEntity<String> getSuggestions(@AuthenticationPrincipal User currentUser) {
-        // Optional endpoint - can be implemented later
-        return ResponseEntity.ok("Suggestions feature coming soon");
+    /**
+     * GET /api/intelligence/repayment-plan?budget=50.000&strategy=urgency
+     * strategy: urgency (default) | snowball | avalanche
+     * budget: optional — if omitted, shows full priority order with full amounts
+     */
+    @GetMapping("/repayment-plan")
+    public ResponseEntity<List<RepaymentPlanItem>> getRepaymentPlan(
+            @RequestParam(required = false) BigDecimal budget,
+            @RequestParam(defaultValue = "urgency") String strategy,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(intelligenceService.getRepaymentPlan(currentUser, budget, strategy));
     }
 }
