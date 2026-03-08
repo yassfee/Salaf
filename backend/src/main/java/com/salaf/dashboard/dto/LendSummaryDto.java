@@ -10,9 +10,12 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class LendSummaryDto {
     private Long id;
-    private String borrowerName;
+    private String contact;         // borrower name (LENT) or lender name (BORROWED)
+    private Long contactId;
     private BigDecimal amount;
+    private BigDecimal paid;        // amount - remainingBalance
     private BigDecimal remainingBalance;
-    private LocalDate dueDate;
+    private LocalDate due;          // renamed from dueDate to match frontend
     private String status;
+    private String type;            // "LENT" or "BORROWED"
 }

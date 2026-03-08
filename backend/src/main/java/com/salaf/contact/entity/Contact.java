@@ -26,6 +26,10 @@ public class Contact {
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "linked_user_id")
+    private User linkedUser;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

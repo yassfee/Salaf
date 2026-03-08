@@ -1,19 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
-  TextInput,
-  Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  Modal, TextInput, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
-import { MOCK_LENDS, MOCK_REPAYMENTS } from '../../constants/mockData';
+import { getLendById, getIncomingLendById, LendResponse } from '../../services/api';
 import CardContainer from '../../components/ui/CardContainer';
 import StatusBadge from '../../components/ui/StatusBadge';
 import ProgressBar from '../../components/ui/ProgressBar';
@@ -21,27 +15,52 @@ import PrimaryButton from '../../components/ui/PrimaryButton';
 import OutlinedButton from '../../components/ui/OutlinedButton';
 import { getInitials, formatDate, formatCurrency } from '../../utils/formatCurrency';
 
-const timelineEvents = [
-  { label: 'Lend Created', date: '15 Jan 2025', color: Colors.primary },
-  { label: 'Acknowledged', date: '16 Jan 2025', color: Colors.success },
-  { label: 'Repayment BD 50.000', date: '15 Feb 2025', color: Colors.warning },
-  { label: 'Due Date', date: '03 Mar 2025', color: Colors.danger },
-];
-
 export default function LendDetailsScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, incoming } = useLocalSearchParams<{ id: string; incoming?: string }>();
+  const isBorrowerView = incoming === 'true';
+  const [lend, setLend] = useState<LendResponse | null>(null);
+  const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [repayAmount, setRepayAmount] = useState('');
 
-  const lend = MOCK_LENDS.find((l) => l.id === Number(id)) ?? MOCK_LENDS[0];
-  const repayments = MOCK_REPAYMENTS.filter((r) => r.lendId === lend.id);
+  useEffect(() => {
+    if (!id) return;
+    const fetch = isBorrowerView ? getIncomingLendById : getLendById;
+    fetch(Number(id))
+      .then(setLend)
+      .catch(() => Alert.alert('Error', 'Failed to load lend details.'))
+      .finally(() => setLoading(false));
+  }, [id, isBorrowerView]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!lend) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.center}>
+          <Text style={{ color: Colors.textSecondary }}>Lend not found.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const progress = lend.amount > 0 ? lend.paid / lend.amount : 0;
-  const remaining = lend.amount - lend.paid;
+  const timelineEvents = [
+    { label: 'Lend Created', date: formatDate(lend.createdAt), color: Colors.primary },
+    { label: 'Due Date', date: formatDate(lend.due), color: Colors.danger },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
@@ -53,7 +72,6 @@ export default function LendDetailsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Main Summary Card */}
         <View style={styles.px}>
           <CardContainer>
             <View style={styles.summaryTop}>
@@ -65,7 +83,7 @@ export default function LendDetailsScreen() {
               </View>
               <StatusBadge status={lend.status} />
             </View>
-            <Text style={styles.remainingAmount}>{formatCurrency(remaining)}</Text>
+            <Text style={styles.remainingAmount}>{formatCurrency(lend.remainingBalance)}</Text>
             <Text style={styles.remainingLabel}>Remaining</Text>
             <View style={styles.progressWrapper}>
               <ProgressBar progress={progress} />
@@ -73,7 +91,6 @@ export default function LendDetailsScreen() {
             <Text style={styles.dueDate}>Due: {formatDate(lend.due)}</Text>
           </CardContainer>
 
-          {/* Stat Row */}
           <View style={styles.statRow}>
             <CardContainer style={styles.statCard}>
               <Text style={styles.statLabel}>Original Amount</Text>
@@ -86,6 +103,17 @@ export default function LendDetailsScreen() {
               </Text>
             </CardContainer>
           </View>
+
+          {/* Note */}
+          {lend.note ? (
+            <>
+              <Text style={styles.sectionTitle}>Note</Text>
+              <CardContainer style={styles.noteCard}>
+                <Ionicons name="document-text-outline" size={16} color={Colors.textSecondary} style={styles.noteIcon} />
+                <Text style={styles.noteText}>{lend.note}</Text>
+              </CardContainer>
+            </>
+          ) : null}
 
           {/* Timeline */}
           <Text style={styles.sectionTitle}>Timeline</Text>
@@ -106,17 +134,15 @@ export default function LendDetailsScreen() {
 
           {/* Repayments */}
           <Text style={styles.sectionTitle}>Repayments</Text>
-          {repayments.length === 0 ? (
+          {lend.repayments.length === 0 ? (
             <Text style={styles.noRepayments}>No repayments yet.</Text>
           ) : (
-            repayments.map((rep) => (
+            lend.repayments.map((rep) => (
               <CardContainer key={rep.id} style={styles.repayCard}>
                 <View style={styles.repayRow}>
                   <View>
-                    <Text style={styles.repayAmount}>{formatCurrency(rep.amount)}</Text>
-                    <Text style={styles.repayMeta}>
-                      {formatDate(rep.date)} · {rep.ref}
-                    </Text>
+                    <Text style={styles.repayAmount}>{formatCurrency(rep.amountPaid)}</Text>
+                    <Text style={styles.repayMeta}>{formatDate(rep.paidAt)}</Text>
                   </View>
                   <TouchableOpacity
                     onPress={() => router.push(`/receipt?lendId=${lend.id}`)}
@@ -131,7 +157,6 @@ export default function LendDetailsScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom Actions */}
       <View style={styles.bottomActions}>
         <PrimaryButton title="+ Record Repayment" onPress={() => setModalVisible(true)} />
         <View style={styles.spacer} />
@@ -141,7 +166,6 @@ export default function LendDetailsScreen() {
         />
       </View>
 
-      {/* Record Repayment Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
@@ -162,7 +186,7 @@ export default function LendDetailsScreen() {
               onPress={() => {
                 setModalVisible(false);
                 setRepayAmount('');
-                Alert.alert('Recorded', 'Repayment has been recorded.');
+                Alert.alert('Coming Soon', 'Repayment recording will be available soon.');
               }}
             />
             <View style={styles.spacer} />
@@ -176,46 +200,19 @@ export default function LendDetailsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12 },
   backBtn: { padding: 4, marginRight: 8 },
-  headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    textAlign: 'center',
-  },
+  headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center' },
   menuBtn: { padding: 4 },
   scroll: { paddingBottom: 24 },
   px: { paddingHorizontal: 20 },
-  summaryTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
+  summaryTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#EFEFEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  avatar: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#EFEFEF', alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#121212', fontWeight: '700', fontSize: 16 },
   contactName: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
-  remainingAmount: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 2,
-  },
+  remainingAmount: { fontSize: 28, fontWeight: '700', color: Colors.textPrimary, marginBottom: 2 },
   remainingLabel: { fontSize: 13, color: Colors.textSecondary, marginBottom: 12 },
   progressWrapper: { marginBottom: 10 },
   dueDate: { fontSize: 12, color: Colors.textSecondary },
@@ -223,45 +220,19 @@ const styles = StyleSheet.create({
   statCard: { flex: 1, alignItems: 'center' },
   statLabel: { fontSize: 11, color: Colors.textSecondary, marginBottom: 6 },
   statValue: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    marginTop: 20,
-    marginBottom: 12,
-  },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary, marginTop: 20, marginBottom: 12 },
   timelineCard: { padding: 16 },
-  timelineItem: {
-    flexDirection: 'row',
-  },
+  timelineItem: { flexDirection: 'row' },
   timelineLeft: { alignItems: 'center', width: 24, marginRight: 12 },
-  timelineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginTop: 3,
-  },
-  timelineLine: {
-    width: 2,
-    flex: 1,
-    backgroundColor: Colors.border,
-    marginVertical: 4,
-    minHeight: 24,
-  },
-  timelineContent: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingBottom: 20,
-  },
+  timelineDot: { width: 12, height: 12, borderRadius: 6, marginTop: 3 },
+  timelineLine: { width: 2, flex: 1, backgroundColor: Colors.border, marginVertical: 4, minHeight: 24 },
+  timelineContent: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 20 },
   timelineLabel: { fontSize: 13, color: Colors.textPrimary, fontWeight: '500' },
   timelineDate: { fontSize: 12, color: Colors.textSecondary },
-  noRepayments: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    paddingVertical: 16,
-  },
+  noteCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  noteIcon: { marginTop: 1 },
+  noteText: { flex: 1, fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
+  noRepayments: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', paddingVertical: 16 },
   repayCard: { marginBottom: 10 },
   repayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   repayAmount: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
@@ -269,35 +240,10 @@ const styles = StyleSheet.create({
   receiptBtn: { padding: 4 },
   bottomActions: { paddingHorizontal: 20, paddingVertical: 16, backgroundColor: Colors.background },
   spacer: { height: 12 },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: Colors.card,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 56,
-    marginBottom: 16,
-  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 20, textAlign: 'center' },
+  inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 16, height: 56, marginBottom: 16 },
   bdPrefix: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary, marginRight: 8 },
   modalInput: { flex: 1, fontSize: 20, fontWeight: '600', color: Colors.textPrimary },
 });

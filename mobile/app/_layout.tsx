@@ -40,6 +40,7 @@ export default function RootLayout() {
         <Stack.Screen name="receipt" />
         <Stack.Screen name="contact-details" />
         <Stack.Screen name="suggest-repayment" />
+        <Stack.Screen name="create-borrow" />
       </Stack>
     </>
   );

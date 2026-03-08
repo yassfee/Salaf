@@ -1,21 +1,43 @@
 package com.salaf.contact.controller;
 
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.salaf.auth.entity.User;
+import com.salaf.contact.dto.ContactRequest;
+import com.salaf.contact.dto.ContactResponse;
+import com.salaf.contact.service.ContactService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/contacts")
+@RequiredArgsConstructor
 public class ContactController {
-    // TODO: Inject ContactService via constructor
 
-    // TODO: GET /api/contacts  (FR-6)
-    //   Return all contacts for the currently authenticated user
-    //   Use @AuthenticationPrincipal User currentUser
+    private final ContactService contactService;
 
-    // TODO: POST /api/contacts  (FR-5, FR-7)
-    //   Accept @Valid @RequestBody ContactRequest
-    //   Create contact linked to currentUser, return ContactResponse with 201 status
+    @GetMapping
+    public List<ContactResponse> getAllContacts(@AuthenticationPrincipal User currentUser) {
+        return contactService.getAllContacts(currentUser);
+    }
 
-    // TODO: DELETE /api/contacts/{id}
-    //   Delete contact by id only if it belongs to currentUser, return 204
+    @PostMapping
+    public ResponseEntity<ContactResponse> createContact(
+            @Valid @RequestBody ContactRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(contactService.createContact(request, currentUser));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteContact(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        contactService.deleteContact(id, currentUser);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -1,26 +1,112 @@
 package com.salaf.lend.controller;
 
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.salaf.auth.entity.User;
+import com.salaf.lend.dto.BorrowRequestDto;
+import com.salaf.lend.dto.LendRequestDto;
+import com.salaf.lend.dto.LendResponseDto;
+import com.salaf.lend.service.LendRequestService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/lends")
+@RequiredArgsConstructor
 public class LendRequestController {
-    // TODO: Inject LendRequestService via constructor
 
-    // TODO: POST /api/lends  (FR-8, FR-9)
-    //   Accept @Valid @RequestBody LendRequestDto
-    //   Create lend with status PENDING, linked to currentUser as lender
+    private final LendRequestService lendRequestService;
 
-    // TODO: GET /api/lends  (FR-17)
-    //   Return all lends for currentUser (both as lender)
+    @PostMapping
+    public ResponseEntity<LendResponseDto> createLend(
+            @Valid @RequestBody LendRequestDto request,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(lendRequestService.createLend(request, currentUser));
+    }
 
-    // TODO: GET /api/lends/{id}  (FR-19, FR-20, FR-21)
-    //   Return full lend details including repayment timeline and progress %
+    @GetMapping
+    public List<LendResponseDto> getLends(@AuthenticationPrincipal User currentUser) {
+        return lendRequestService.getLends(currentUser);
+    }
 
-    // TODO: PATCH /api/lends/{id}/accept  (FR-11, FR-12)
-    //   Change status from PENDING to ACCEPTED
+    @GetMapping("/{id}")
+    public LendResponseDto getLendById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        return lendRequestService.getLendById(id, currentUser);
+    }
 
-    // TODO: PATCH /api/lends/{id}/reject  (FR-11, FR-13)
-    //   Change status from PENDING to REJECTED
+    /** Borrower accepts an incoming lend request. */
+    @PatchMapping("/{id}/accept")
+    public LendResponseDto accept(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        return lendRequestService.accept(id, currentUser);
+    }
+
+    /** Borrower rejects an incoming lend request. */
+    @PatchMapping("/{id}/reject")
+    public LendResponseDto reject(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        return lendRequestService.reject(id, currentUser);
+    }
+
+    /** Lender cancels a pending lend they created. */
+    @PatchMapping("/{id}/cancel")
+    public LendResponseDto cancel(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        return lendRequestService.cancel(id, currentUser);
+    }
+
+    /** Returns all lends where the current user is the borrower. */
+    @GetMapping("/incoming")
+    public List<LendResponseDto> getIncomingLends(@AuthenticationPrincipal User currentUser) {
+        return lendRequestService.getIncomingLends(currentUser);
+    }
+
+    /** Returns a single incoming lend by id for the borrower. */
+    @GetMapping("/incoming/{id}")
+    public LendResponseDto getIncomingLendById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        return lendRequestService.getIncomingLendById(id, currentUser);
+    }
+
+    /** Borrower sends a borrow request to a contact (the desired lender). */
+    @PostMapping("/borrow-request")
+    public ResponseEntity<LendResponseDto> createBorrowRequest(
+            @Valid @RequestBody BorrowRequestDto request,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(lendRequestService.createBorrowRequest(currentUser, request));
+    }
+
+    /** Lender retrieves all borrow requests directed at them. */
+    @GetMapping("/borrow-requests")
+    public List<LendResponseDto> getBorrowRequests(@AuthenticationPrincipal User currentUser) {
+        return lendRequestService.getBorrowRequestsForLender(currentUser);
+    }
+
+    /** Lender approves a borrow request — status → ACCEPTED. */
+    @PatchMapping("/{id}/approve-borrow")
+    public LendResponseDto approveBorrowRequest(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        return lendRequestService.approveBorrowRequest(id, currentUser);
+    }
+
+    /** Lender declines a borrow request — status → REJECTED. */
+    @PatchMapping("/{id}/decline-borrow")
+    public LendResponseDto declineBorrowRequest(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        return lendRequestService.declineBorrowRequest(id, currentUser);
+    }
 }

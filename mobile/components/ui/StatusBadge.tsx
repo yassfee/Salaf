@@ -10,8 +10,9 @@ interface StatusBadgeProps {
 }
 
 const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-  PENDING:        { bg: Colors.primaryLight,  text: Colors.primaryDark, label: 'Pending' },
-  ACCEPTED:       { bg: Colors.blueLight,     text: Colors.blue,        label: 'Accepted' },
+  PENDING:          { bg: Colors.primaryLight,  text: Colors.primaryDark, label: 'Pending' },
+  BORROW_REQUESTED: { bg: Colors.warningLight,  text: Colors.warning,     label: 'Requested' },
+  ACCEPTED:         { bg: Colors.blueLight,     text: Colors.blue,        label: 'Accepted' },
   ACTIVE:         { bg: Colors.primary,        text: '#FFFFFF',          label: 'Active' },
   PARTIALLY_PAID: { bg: Colors.warningLight,  text: Colors.warning,     label: 'Partial' },
   PAID:           { bg: Colors.successLight,  text: Colors.success,     label: 'Paid' },

@@ -7,13 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
-import { getContacts, createLend, ContactResponse } from '../../services/api';
+import { getContacts, createBorrowRequest, ContactResponse } from '../../services/api';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import InputField from '../../components/ui/InputField';
 import CardContainer from '../../components/ui/CardContainer';
 import { getInitials } from '../../utils/formatCurrency';
 
-export default function CreateLendScreen() {
+export default function CreateBorrowRequestScreen() {
   const router = useRouter();
   const [contacts, setContacts] = useState<ContactResponse[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(true);
@@ -37,14 +37,14 @@ export default function CreateLendScreen() {
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!selectedContact) errs.contact = 'Please select a contact';
+    if (!selectedContact) errs.contact = 'Please select who you want to borrow from';
     if (!amount || parseFloat(amount) <= 0) errs.amount = 'Amount must be greater than 0';
     if (!dueDate) errs.dueDate = 'Due date is required';
     else {
       const due = new Date(dueDate);
       if (isNaN(due.getTime()) || due <= new Date()) errs.dueDate = 'Due date must be in the future (YYYY-MM-DD)';
     }
-    if (!agreed) errs.agreed = 'You must confirm the lending agreement';
+    if (!agreed) errs.agreed = 'You must confirm the borrowing agreement';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -53,10 +53,14 @@ export default function CreateLendScreen() {
     if (!validate()) return;
     try {
       setSubmitting(true);
-      await createLend(selectedContact!, parseFloat(amount), dueDate, note || undefined);
-      router.replace({ pathname: '/(tabs)', params: { toast: '1' } } as any);
+      await createBorrowRequest(selectedContact!, parseFloat(amount), dueDate, note || undefined);
+      Alert.alert(
+        'Request Sent!',
+        `Your borrow request has been sent to ${chosenContact?.name}. They will be notified to review it.`,
+        [{ text: 'OK', onPress: () => router.back() }],
+      );
     } catch (e: any) {
-      const msg = e?.response?.data?.message ?? 'Failed to create lend.';
+      const msg = e?.response?.data?.message ?? 'Failed to send borrow request.';
       Alert.alert('Error', msg);
     } finally {
       setSubmitting(false);
@@ -69,12 +73,16 @@ export default function CreateLendScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Lend</Text>
+        <Text style={styles.headerTitle}>Request to Borrow</Text>
         <View style={styles.headerRight} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.px}>
+          <Text style={styles.hint}>
+            Select a contact and fill in the details. They will review and approve your request.
+          </Text>
+
           {/* Contact Selector */}
           {loadingContacts ? (
             <ActivityIndicator color={Colors.primary} style={{ marginBottom: 12 }} />
@@ -92,7 +100,7 @@ export default function CreateLendScreen() {
                     <Text style={styles.contactName}>{chosenContact.name}</Text>
                   </View>
                 ) : (
-                  <Text style={styles.contactPlaceholder}>Select Contact</Text>
+                  <Text style={styles.contactPlaceholder}>Borrow from...</Text>
                 )}
                 <Ionicons name="chevron-down" size={18} color={Colors.textSecondary} />
               </TouchableOpacity>
@@ -144,7 +152,7 @@ export default function CreateLendScreen() {
           <View style={styles.textareaWrapper}>
             <TextInput
               style={styles.textarea}
-              placeholder="Note (optional)"
+              placeholder="Reason / Note (optional)"
               placeholderTextColor={Colors.textSecondary}
               value={note}
               onChangeText={setNote}
@@ -154,7 +162,7 @@ export default function CreateLendScreen() {
             />
           </View>
 
-          {/* Lender Agreement */}
+          {/* Borrower Agreement */}
           <TouchableOpacity
             style={styles.agreementRow}
             onPress={() => setAgreed(!agreed)}
@@ -164,14 +172,15 @@ export default function CreateLendScreen() {
               {agreed && <Ionicons name="checkmark" size={14} color="#fff" />}
             </View>
             <Text style={styles.agreementText}>
-              I confirm I am lending{chosenContact ? ` to ${chosenContact.name}` : ''} and understand this is a formal record
+              I confirm I want to borrow{chosenContact ? ` from ${chosenContact.name}` : ''} and
+              I will repay the full amount on time
             </Text>
           </TouchableOpacity>
           {errors.agreed && <Text style={styles.errorText}>{errors.agreed}</Text>}
 
           <View style={styles.spacer} />
           <PrimaryButton
-            title="➕ Submit Lend"
+            title="Send Borrow Request"
             onPress={handleSubmit}
             loading={submitting}
             disabled={submitting}
@@ -190,6 +199,7 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center' },
   headerRight: { width: 32 },
   px: { paddingHorizontal: 20, paddingBottom: 24, paddingTop: 8 },
+  hint: { fontSize: 13, color: Colors.textSecondary, marginBottom: 16, lineHeight: 18 },
   contactSelector: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     height: 52, borderWidth: 1, borderColor: Colors.border,

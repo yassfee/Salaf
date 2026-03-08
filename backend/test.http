@@ -1,8 +1,12 @@
-# ── Auth Tests ────────────────────────────────────────────────────────────────
-# Click "Send Request" above each ### block to run it
+# ── Variables ─────────────────────────────────────────────────────────────────
+# After login, copy the token value and paste it in @token below
+@base = http://localhost:8080
+@token = PASTE_YOUR_TOKEN_HERE
 
-### Register a new user
-POST http://localhost:8080/api/auth/register
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+### 1. Register
+POST {{base}}/api/auth/register
 Content-Type: application/json
 
 {
@@ -12,8 +16,8 @@ Content-Type: application/json
   "phone": "+973 3300 0000"
 }
 
-### Login
-POST http://localhost:8080/api/auth/login
+### 2. Login  ← copy "token" from the response and paste into @token above
+POST {{base}}/api/auth/login
 Content-Type: application/json
 
 {
@@ -21,9 +25,63 @@ Content-Type: application/json
   "password": "123456"
 }
 
-### Try a protected route WITHOUT token (expect 403)
-GET http://localhost:8080/api/dashboard/summary
+# ── Contacts ──────────────────────────────────────────────────────────────────
 
-### Try a protected route WITH token (paste your token below, expect 404 not 403)
-GET http://localhost:8080/api/dashboard/summary
-Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ5b3VzaWZAdGVzdC5jb20iLCJpYXQiOjE3NzIwOTI1OTIsImV4cCI6MTc3MjE3ODk5Mn0.LpvH4ee1hHFWApZ23EAWBDgfnN8Jyu7g5qTU_4cyrQ7jgd3tTWZJUkD9z2LhTsU6
+### 3. Create contact
+POST {{base}}/api/contacts
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Ali Hassan",
+  "phone": "+973 3300 1111",
+  "email": "ali@test.com"
+}
+
+### 4. Get all contacts
+GET {{base}}/api/contacts
+Authorization: Bearer {{token}}
+
+### 5. Delete contact (replace 1 with real id)
+DELETE {{base}}/api/contacts/1
+Authorization: Bearer {{token}}
+
+# ── Lends ─────────────────────────────────────────────────────────────────────
+
+### 6. Create lend (replace contactId with the id from step 3)
+POST {{base}}/api/lends
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "contactId": 1,
+  "amount": 100.000,
+  "dueDate": "2027-06-01",
+  "note": "Help for car repair"
+}
+
+### 7. Get all lends
+GET {{base}}/api/lends
+Authorization: Bearer {{token}}
+
+### 8. Get lend by id (replace 1 with real id)
+GET {{base}}/api/lends/1
+Authorization: Bearer {{token}}
+
+### 9. Accept lend (replace 1 with real id)
+PATCH {{base}}/api/lends/1/accept
+Authorization: Bearer {{token}}
+
+### 10. Reject lend (replace 1 with real id)
+PATCH {{base}}/api/lends/1/reject
+Authorization: Bearer {{token}}
+
+# ── Dashboard ─────────────────────────────────────────────────────────────────
+
+### 11. Dashboard summary
+GET {{base}}/api/dashboard/summary
+Authorization: Bearer {{token}}
+
+### 12. Due soon
+GET {{base}}/api/dashboard/due-soon
+Authorization: Bearer {{token}}

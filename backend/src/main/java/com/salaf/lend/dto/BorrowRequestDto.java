@@ -15,10 +15,11 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LendRequestDto {
+public class BorrowRequestDto {
 
+    /** ID of the borrower's contact that represents the desired lender. */
     @NotNull
-    private Long contactId;
+    private Long lenderContactId;
 
     @NotNull
     @Positive

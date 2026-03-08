@@ -16,6 +16,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -96,8 +97,9 @@ public class SecurityConfig {
 
             // Route permissions
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()   // register + login are public
-                .anyRequest().authenticated()                  // everything else requires JWT
+                .requestMatchers("/api/auth/**").permitAll()            // register + login are public
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // CORS preflight requests
+                .anyRequest().authenticated()                           // everything else requires JWT
             )
 
             // Stateless session (no server-side session storage)

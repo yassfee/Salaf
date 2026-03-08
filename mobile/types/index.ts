@@ -1,5 +1,6 @@
 export type LendStatus =
   | 'PENDING'
+  | 'BORROW_REQUESTED'
   | 'ACCEPTED'
   | 'ACTIVE'
   | 'PARTIALLY_PAID'

@@ -1,35 +1,109 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
-import { MOCK_CONTACTS } from '../../constants/mockData';
+import { getContacts, createContact, searchUsers, ContactResponse, UserSearchResult } from '../../services/api';
 import ContactCard from '../../components/cards/ContactCard';
 
 export default function ContactsScreen() {
   const router = useRouter();
+  const [contacts, setContacts] = useState<ContactResponse[]>([]);
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
 
-  const filtered = MOCK_CONTACTS.filter((c) =>
+  // Add contact via user search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await getContacts();
+      setContacts(data);
+    } catch {
+      Alert.alert('Error', 'Failed to load contacts.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = contacts.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const doSearch = async (q: string) => {
+    if (!q.trim()) { setSearchResults([]); return; }
+    try {
+      setSearching(true);
+      const results = await searchUsers(q.trim());
+      setSearchResults(results);
+    } catch {
+      Alert.alert('Error', 'Failed to search users.');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleSearchQueryChange = (text: string) => {
+    setSearchQuery(text);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => doSearch(text), 400);
+  };
+
+  const handleAddUser = async (user: UserSearchResult) => {
+    try {
+      setSaving(true);
+      const created = await createContact(user.email);
+      setContacts((prev) => [created, ...prev]);
+      setModalVisible(false);
+      setSearchQuery('');
+      setSearchResults([]);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message ?? 'Failed to add contact.';
+      Alert.alert('Error', msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    setSearchQuery('');
+    setSearchResults([]);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Amber Header */}
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.title}>My Contacts</Text>
-            <Text style={styles.subtitle}>{MOCK_CONTACTS.length} people</Text>
+            <Text style={styles.subtitle}>{contacts.length} people</Text>
           </View>
-          <TouchableOpacity style={styles.addBtn}>
+          <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
             <Ionicons name="add" size={22} color="#121212" />
           </TouchableOpacity>
         </View>
-
-        {/* Search Bar in header */}
         <View style={styles.searchWrapper}>
           <Ionicons name="search-outline" size={17} color={Colors.textSecondary} style={styles.searchIcon} />
           <TextInput
@@ -43,24 +117,97 @@ export default function ContactsScreen() {
       </View>
 
       {/* Content */}
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.list}
-      >
-        {filtered.map((contact) => (
-          <ContactCard
-            key={contact.id}
-            contact={contact}
-            onPress={() => router.push(`/contact-details?id=${contact.id}`)}
-          />
-        ))}
-        {filtered.length === 0 && (
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>No contacts found.</Text>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.list}
+        >
+          {filtered.map((contact) => (
+            <ContactCard
+              key={contact.id}
+              contact={{ ...contact, trustScore: 0 }}
+              onPress={() => router.push(`/contact-details?id=${contact.id}`)}
+            />
+          ))}
+          {filtered.length === 0 && (
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>No contacts found.</Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
+
+      {/* Add Contact Modal — search by email/phone */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>Add Contact</Text>
+            <Text style={styles.modalHint}>Search for a registered user by email or phone</Text>
+
+            <View style={styles.searchRow}>
+              <TextInput
+                style={styles.searchField}
+                placeholder="Email or phone number..."
+                placeholderTextColor={Colors.textSecondary}
+                value={searchQuery}
+                onChangeText={handleSearchQueryChange}
+                autoCapitalize="none"
+                keyboardType="default"
+                returnKeyType="search"
+                autoCorrect={false}
+              />
+              {searching && (
+                <View style={styles.searchingIndicator}>
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                </View>
+              )}
+            </View>
+
+            {searchResults.length > 0 && (
+              <ScrollView style={styles.results} showsVerticalScrollIndicator={false}>
+                {searchResults.map((user) => (
+                  <TouchableOpacity
+                    key={user.id}
+                    style={styles.resultItem}
+                    onPress={() => handleAddUser(user)}
+                    disabled={saving}
+                  >
+                    <View style={styles.resultAvatar}>
+                      <Text style={styles.resultAvatarText}>
+                        {user.name.split(' ').map((p) => p[0]).join('').toUpperCase().slice(0, 2)}
+                      </Text>
+                    </View>
+                    <View style={styles.resultInfo}>
+                      <Text style={styles.resultName}>{user.name}</Text>
+                      <Text style={styles.resultEmail}>{user.email}</Text>
+                    </View>
+                    <View style={styles.addCircle}>
+                      {saving ? (
+                        <ActivityIndicator size="small" color={Colors.primary} />
+                      ) : (
+                        <Ionicons name="person-add-outline" size={18} color={Colors.primary} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+
+            {searchResults.length === 0 && searchQuery.trim().length >= 2 && !searching && (
+              <Text style={styles.noResults}>No users found. Make sure they are registered.</Text>
+            )}
+
+            <TouchableOpacity style={styles.cancelBtn} onPress={closeModal}>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
-        )}
-      </ScrollView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -85,25 +232,53 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '800', color: '#FFFFFF' },
   subtitle: { fontSize: 13, color: '#FFFFFF', opacity: 0.75, marginTop: 2 },
   addBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#EFEFEF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: '#EFEFEF', alignItems: 'center', justifyContent: 'center',
   },
   searchWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 48,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#FFFFFF', borderRadius: 14, paddingHorizontal: 14, height: 48,
   },
   searchIcon: { marginRight: 10 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
   content: { flex: 1, backgroundColor: Colors.background },
   list: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   empty: { paddingVertical: 40, alignItems: 'center' },
   emptyText: { fontSize: 14, color: Colors.textSecondary },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: Colors.card,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, paddingBottom: 40, gap: 12, maxHeight: '80%',
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center' },
+  modalHint: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', marginTop: -4 },
+  searchRow: { flexDirection: 'row', alignItems: 'center' },
+  searchField: {
+    flex: 1, height: 48, borderWidth: 1, borderColor: Colors.border,
+    borderRadius: 12, paddingHorizontal: 14, fontSize: 14, color: Colors.textPrimary,
+    backgroundColor: Colors.background,
+  },
+  searchingIndicator: { position: 'absolute', right: 14 },
+  results: { maxHeight: 240 },
+  resultItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  resultAvatar: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center',
+  },
+  resultAvatarText: { color: Colors.primary, fontWeight: '700', fontSize: 13 },
+  resultInfo: { flex: 1 },
+  resultName: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
+  resultEmail: { fontSize: 12, color: Colors.textSecondary, marginTop: 1 },
+  addCircle: { padding: 4 },
+  noResults: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', paddingVertical: 8 },
+  cancelBtn: {
+    height: 52, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center', marginTop: 4,
+  },
+  cancelBtnText: { color: Colors.textSecondary, fontWeight: '600', fontSize: 15 },
 });

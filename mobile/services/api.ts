@@ -1,6 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { LendStatus } from '../types';
 
 // web (browser) → localhost | Android emulator → 10.0.2.2 | physical device → your LAN IP
 const API_BASE_URL =
@@ -11,7 +12,7 @@ const API_BASE_URL =
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 10000, // fail fast after 10 s instead of hanging forever
+  timeout: 10000,
 });
 
 // Attach JWT token to every request
@@ -21,7 +22,7 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// ── Auth helpers ────────────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────────
 
 export interface AuthResponse {
   token: string;
@@ -29,9 +30,79 @@ export interface AuthResponse {
   email: string;
 }
 
+export interface StoredUser {
+  name: string;
+  email: string;
+}
+
+export interface UserSearchResult {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export interface ContactResponse {
+  id: number;
+  name: string;
+  phone?: string;
+  email: string;
+  linkedUserId?: number;
+  createdAt: string;
+}
+
+export interface RepaymentResponse {
+  id: number;
+  amountPaid: number;
+  paidAt: string;
+  note?: string;
+}
+
+export interface LendResponse {
+  id: number;
+  contact: string;        // borrower name (lender view) or lender name (borrower view)
+  contactId: number;
+  lenderName: string;
+  lenderEmail: string;
+  amount: number;
+  paid: number;
+  remainingBalance: number;
+  due: string;
+  note?: string;
+  status: LendStatus;
+  type: string;           // "LENT" or "BORROWED"
+  progressPercent: number;
+  createdAt: string;
+  repayments: RepaymentResponse[];
+}
+
+export interface DashboardSummary {
+  totalLent: number;
+  totalBorrowed: number;
+  outstanding: number;
+  overdue: number;
+}
+
+export interface DueSoonLend {
+  id: number;
+  contact: string;
+  contactId: number;
+  amount: number;
+  paid: number;
+  remainingBalance: number;
+  due: string;
+  status: LendStatus;
+  type: string;   // "LENT" or "BORROWED"
+}
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
 export async function loginApi(email: string, password: string): Promise<AuthResponse> {
   const res = await api.post<AuthResponse>('/api/auth/login', { email, password });
-  await AsyncStorage.setItem('token', res.data.token);
+  await AsyncStorage.multiSet([
+    ['token', res.data.token],
+    ['user_name', res.data.name],
+    ['user_email', res.data.email],
+  ]);
   return res.data;
 }
 
@@ -42,12 +113,136 @@ export async function registerApi(
   phone?: string,
 ): Promise<AuthResponse> {
   const res = await api.post<AuthResponse>('/api/auth/register', { name, email, password, phone });
-  await AsyncStorage.setItem('token', res.data.token);
+  await AsyncStorage.multiSet([
+    ['token', res.data.token],
+    ['user_name', res.data.name],
+    ['user_email', res.data.email],
+  ]);
   return res.data;
 }
 
 export async function logoutApi(): Promise<void> {
-  await AsyncStorage.removeItem('token');
+  await AsyncStorage.multiRemove(['token', 'user_name', 'user_email']);
+}
+
+export async function getCurrentUser(): Promise<StoredUser | null> {
+  const results = await AsyncStorage.multiGet(['user_name', 'user_email']);
+  const name = results[0][1];
+  const email = results[1][1];
+  if (!name || !email) return null;
+  return { name, email };
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+export async function searchUsers(query: string): Promise<UserSearchResult[]> {
+  const res = await api.get<UserSearchResult[]>('/api/users/search', { params: { q: query } });
+  return res.data;
+}
+
+// ── Contacts ─────────────────────────────────────────────────────────────────
+
+export async function getContacts(): Promise<ContactResponse[]> {
+  const res = await api.get<ContactResponse[]>('/api/contacts');
+  return res.data;
+}
+
+export async function createContact(linkedUserEmail: string): Promise<ContactResponse> {
+  const res = await api.post<ContactResponse>('/api/contacts', { linkedUserEmail });
+  return res.data;
+}
+
+export async function deleteContact(id: number): Promise<void> {
+  await api.delete(`/api/contacts/${id}`);
+}
+
+// ── Lends ─────────────────────────────────────────────────────────────────────
+
+export async function getLends(): Promise<LendResponse[]> {
+  const res = await api.get<LendResponse[]>('/api/lends');
+  return res.data;
+}
+
+export async function getIncomingLends(): Promise<LendResponse[]> {
+  const res = await api.get<LendResponse[]>('/api/lends/incoming');
+  return res.data;
+}
+
+export async function createLend(
+  contactId: number,
+  amount: number,
+  dueDate: string,
+  note?: string,
+): Promise<LendResponse> {
+  const res = await api.post<LendResponse>('/api/lends', { contactId, amount, dueDate, note });
+  return res.data;
+}
+
+export async function getLendById(id: number): Promise<LendResponse> {
+  const res = await api.get<LendResponse>(`/api/lends/${id}`);
+  return res.data;
+}
+
+export async function getIncomingLendById(id: number): Promise<LendResponse> {
+  const res = await api.get<LendResponse>(`/api/lends/incoming/${id}`);
+  return res.data;
+}
+
+export async function acceptLend(id: number): Promise<LendResponse> {
+  const res = await api.patch<LendResponse>(`/api/lends/${id}/accept`);
+  return res.data;
+}
+
+export async function rejectLend(id: number): Promise<LendResponse> {
+  const res = await api.patch<LendResponse>(`/api/lends/${id}/reject`);
+  return res.data;
+}
+
+export async function cancelLend(id: number): Promise<LendResponse> {
+  const res = await api.patch<LendResponse>(`/api/lends/${id}/cancel`);
+  return res.data;
+}
+
+export async function createBorrowRequest(
+  lenderContactId: number,
+  amount: number,
+  dueDate: string,
+  note?: string,
+): Promise<LendResponse> {
+  const res = await api.post<LendResponse>('/api/lends/borrow-request', {
+    lenderContactId,
+    amount,
+    dueDate,
+    note,
+  });
+  return res.data;
+}
+
+export async function getBorrowRequests(): Promise<LendResponse[]> {
+  const res = await api.get<LendResponse[]>('/api/lends/borrow-requests');
+  return res.data;
+}
+
+export async function approveBorrowRequest(id: number): Promise<LendResponse> {
+  const res = await api.patch<LendResponse>(`/api/lends/${id}/approve-borrow`);
+  return res.data;
+}
+
+export async function declineBorrowRequest(id: number): Promise<LendResponse> {
+  const res = await api.patch<LendResponse>(`/api/lends/${id}/decline-borrow`);
+  return res.data;
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
+export async function getDashboardSummary(): Promise<DashboardSummary> {
+  const res = await api.get<DashboardSummary>('/api/dashboard/summary');
+  return res.data;
+}
+
+export async function getDueSoon(): Promise<DueSoonLend[]> {
+  const res = await api.get<DueSoonLend[]>('/api/dashboard/due-soon');
+  return res.data;
 }
 
 export default api;

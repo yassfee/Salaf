@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -57,23 +59,47 @@ public class DashboardService {
         );
     }
 
-    // Task 7 — FR-18: lends that are overdue or due within the next 7 days
+    // Task 7 — FR-18: lends overdue or due within the next 7 days (both lender + borrower)
     public List<LendSummaryDto> getDueSoon(User user) {
         List<LendStatus> activeStatuses = List.of(
-                LendStatus.ACTIVE, LendStatus.PARTIALLY_PAID, LendStatus.OVERDUE);
+                LendStatus.ACTIVE, LendStatus.PARTIALLY_PAID, LendStatus.OVERDUE, LendStatus.ACCEPTED);
         LocalDate cutoff = LocalDate.now().plusDays(7);
 
-        return lendRequestRepository.findByLenderAndStatusIn(user, activeStatuses).stream()
+        List<LendSummaryDto> result = new ArrayList<>();
+
+        // Lends where user is the lender
+        lendRequestRepository.findByLenderAndStatusIn(user, activeStatuses).stream()
                 .filter(l -> l.getStatus() == LendStatus.OVERDUE || !l.getDueDate().isAfter(cutoff))
-                .sorted((a, b) -> a.getDueDate().compareTo(b.getDueDate()))
                 .map(l -> new LendSummaryDto(
                         l.getId(),
                         l.getBorrower().getName(),
+                        l.getBorrower().getId(),
                         l.getAmount(),
+                        l.getAmount().subtract(l.getRemainingBalance()),
                         l.getRemainingBalance(),
                         l.getDueDate(),
-                        l.getStatus().name()
+                        l.getStatus().name(),
+                        "LENT"
                 ))
-                .collect(Collectors.toList());
+                .forEach(result::add);
+
+        // Lends where user is the borrower
+        lendRequestRepository.findByBorrower_LinkedUserAndStatusIn(user, activeStatuses).stream()
+                .filter(l -> l.getStatus() == LendStatus.OVERDUE || !l.getDueDate().isAfter(cutoff))
+                .map(l -> new LendSummaryDto(
+                        l.getId(),
+                        l.getLender().getName(),
+                        l.getBorrower().getId(),
+                        l.getAmount(),
+                        l.getAmount().subtract(l.getRemainingBalance()),
+                        l.getRemainingBalance(),
+                        l.getDueDate(),
+                        l.getStatus().name(),
+                        "BORROWED"
+                ))
+                .forEach(result::add);
+
+        result.sort(Comparator.comparing(LendSummaryDto::getDue));
+        return result;
     }
 }

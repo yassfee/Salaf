@@ -13,4 +13,9 @@ public interface LendRequestRepository extends JpaRepository<LendRequest, Long> 
     List<LendRequest> findByLenderAndStatus(User lender, LendStatus status);
     List<LendRequest> findByLenderAndStatusIn(User lender, List<LendStatus> statuses);
     Optional<LendRequest> findByIdAndLender(Long id, User lender);
+
+    // Borrower-side: find lends where the borrower contact is linked to a specific user
+    List<LendRequest> findByBorrower_LinkedUser(User linkedUser);
+    List<LendRequest> findByBorrower_LinkedUserAndStatusIn(User linkedUser, List<LendStatus> statuses);
+    Optional<LendRequest> findByIdAndBorrower_LinkedUser(Long id, User linkedUser);
 }
