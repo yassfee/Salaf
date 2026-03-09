@@ -13,6 +13,7 @@ import {
   sendNotification, getNotifications, markAllNotificationsRead, getUnreadNotificationCount,
   getContacts, ContactResponse, createLend, createBorrowRequest,
   getIncomingLends, acceptLend, rejectLend, getBorrowRequests, approveBorrowRequest, declineBorrowRequest,
+  WalletResponse, getWallet, saveWalletCard, updateWalletBalance,
 } from '../../services/api';
 import LendCard from '../../components/cards/LendCard';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -51,6 +52,17 @@ export default function HomeScreen() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
+
+  // Wallet
+  const [wallet, setWallet] = useState<WalletResponse | null>(null);
+  const [balanceVisible, setBalanceVisible] = useState(false);
+  const [walletModalVisible, setWalletModalVisible] = useState(false);
+  // Wallet form state
+  const [wCardNumber, setWCardNumber] = useState('');
+  const [wCardholder, setWCardholder] = useState('');
+  const [wExpiry, setWExpiry] = useState('');
+  const [wBalance, setWBalance] = useState('');
+  const [wSaving, setWSaving] = useState(false);
 
   // Shared contacts (lend + borrow modals)
   const [formContacts, setFormContacts] = useState<ContactResponse[]>([]);
@@ -108,18 +120,20 @@ export default function HomeScreen() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [user, sum, due, myLends, count] = await Promise.all([
+      const [user, sum, due, myLends, count, w] = await Promise.all([
         getCurrentUser(),
         getDashboardSummary(),
         getDueSoon(),
         getLends(),
         getUnreadNotificationCount(),
+        getWallet(),
       ]);
       if (user) setUserName(user.name);
       setSummary(sum);
       setDueSoon(due);
       setLends(myLends);
       setUnreadCount(count);
+      setWallet(w);
     } catch {
       // silently fail — show zeros
     } finally {
@@ -313,6 +327,72 @@ export default function HomeScreen() {
   const handledIncoming = incomingLends.filter((l) => l.status === 'ACCEPTED' || l.status === 'REJECTED');
   const pendingBorrowReqs = borrowReqList.filter((l) => l.status === 'BORROW_REQUESTED');
 
+  // ── Wallet helpers ────────────────────────────────────────────────────────────
+  const detectBrand = (num: string): string => {
+    const d = num.replace(/\D/g, '');
+    if (d.startsWith('4')) return 'VISA';
+    if (/^5[1-5]/.test(d) || /^2[2-7]/.test(d)) return 'MASTERCARD';
+    if (/^3[47]/.test(d)) return 'AMEX';
+    if (/^6/.test(d)) return 'DISCOVER';
+    return '';
+  };
+  const formatCardInput = (val: string) => {
+    const d = val.replace(/\D/g, '').substring(0, 16);
+    return d.replace(/(.{4})/g, '$1 ').trim();
+  };
+  const formatExpiryInput = (val: string) => {
+    const d = val.replace(/\D/g, '').substring(0, 4);
+    return d.length >= 3 ? d.substring(0, 2) + '/' + d.substring(2) : d;
+  };
+  const wBrand = detectBrand(wCardNumber);
+  const wLast4 = wCardNumber.replace(/\D/g, '').slice(-4);
+
+  const openWalletModal = () => {
+    setWCardNumber(wallet?.last4 ? `•••• •••• •••• ${wallet.last4}` : '');
+    setWCardholder(wallet?.cardholderName ?? '');
+    const mo = wallet?.expiryMonth?.toString().padStart(2, '0') ?? '';
+    const yr = wallet?.expiryYear?.toString().slice(-2) ?? '';
+    setWExpiry(mo && yr ? `${mo}/${yr}` : '');
+    setWBalance(wallet?.balance?.toString() ?? '');
+    setWalletModalVisible(true);
+  };
+
+  const handleSaveWallet = async () => {
+    const rawDigits = wCardNumber.replace(/\D/g, '');
+    const usingExistingCard = wallet?.hasCard && wCardNumber.includes('•') && rawDigits.length <= 4;
+    if (!usingExistingCard && rawDigits.length < 13) { Alert.alert('Invalid card', 'Please enter a valid card number.'); return; }
+    const [moStr, yrStr] = wExpiry.split('/');
+    const mo = parseInt(moStr ?? '0');
+    const yr = parseInt(yrStr ?? '0');
+    if (!mo || mo > 12 || !yr) { Alert.alert('Invalid expiry', 'Please enter a valid expiry (MM/YY).'); return; }
+    if (!wCardholder.trim()) { Alert.alert('Missing name', 'Please enter the cardholder name.'); return; }
+    const last4 = usingExistingCard ? (wallet!.last4 ?? rawDigits) : rawDigits.slice(-4);
+    const brand = usingExistingCard ? (wallet!.brand ?? 'CARD') : (detectBrand(wCardNumber) || 'CARD');
+    try {
+      setWSaving(true);
+      const [updatedCard, updatedBalance] = await Promise.all([
+        saveWalletCard({ last4, brand, cardholderName: wCardholder.trim().toUpperCase(), expiryMonth: mo, expiryYear: 2000 + yr }),
+        updateWalletBalance(parseFloat(wBalance) || 0),
+      ]);
+      setWallet({ ...updatedCard, balance: updatedBalance.balance });
+      setWalletModalVisible(false);
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Failed to save wallet.');
+    } finally {
+      setWSaving(false);
+    }
+  };
+
+  // card display helpers
+  const cardBrandColor: Record<string, string> = {
+    VISA: '#1A1F71', MASTERCARD: '#EB5757', AMEX: '#007B5E', DISCOVER: '#E65C00',
+  };
+  const cardDisplayBrand = wallet?.brand ?? '';
+  const cardAccent = cardBrandColor[cardDisplayBrand] ?? '#333';
+  const cardExpiry = wallet?.expiryMonth && wallet?.expiryYear
+    ? `${wallet.expiryMonth.toString().padStart(2, '0')}/${wallet.expiryYear.toString().slice(-2)}`
+    : '——/——';
+
   // ── Summary ──────────────────────────────────────────────────────────────────
   const summaryCards = [
     { label: 'Total Lent',     icon: 'arrow-up-outline',      amount: summary?.totalLent ?? 0 },
@@ -348,10 +428,34 @@ export default function HomeScreen() {
               )}
             </TouchableOpacity>
           </View>
-          <Text style={styles.headline}>•••• •••• •••• 4242</Text>
-          <TouchableOpacity style={styles.totalChip} activeOpacity={0.8}>
-            <Ionicons name="eye-outline" size={13} color="#121212" />
-            <Text style={styles.totalChipText}>Show Balance</Text>
+          <TouchableOpacity style={styles.cardDisplay} onPress={openWalletModal} activeOpacity={0.85}>
+            <View style={styles.cardTopRow}>
+              <View style={styles.cardChipIcon}>
+                <Ionicons name="card-outline" size={14} color="rgba(255,255,255,0.7)" />
+              </View>
+              {cardDisplayBrand ? (
+                <Text style={styles.cardBrand}>{cardDisplayBrand}</Text>
+              ) : <Text style={styles.cardBrand}>TAP TO ADD</Text>}
+            </View>
+            <Text style={styles.cardNumber}>
+              {wallet?.hasCard ? `•••• •••• •••• ${wallet.last4}` : '•••• •••• •••• ••••'}
+            </Text>
+            <View style={styles.cardBottomRow}>
+              <View>
+                <Text style={styles.cardFieldLabel}>CARDHOLDER</Text>
+                <Text style={styles.cardFieldValue}>{wallet?.cardholderName ?? '— — — — —'}</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.cardFieldLabel}>EXPIRES</Text>
+                <Text style={styles.cardFieldValue}>{cardExpiry}</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.totalChip} activeOpacity={0.8} onPress={() => setBalanceVisible(!balanceVisible)}>
+            <Ionicons name={balanceVisible ? 'eye-off-outline' : 'eye-outline'} size={13} color="#121212" />
+            <Text style={styles.totalChipText}>
+              {balanceVisible ? `BD ${wallet?.balance?.toFixed(3) ?? '0.000'}` : 'Show Balance'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -811,6 +915,90 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
+      {/* ── Wallet Modal ─────────────────────────────────────────────────────── */}
+      <Modal visible={walletModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { maxHeight: '85%', paddingBottom: 0 }]}>
+            <View style={styles.notifHeader}>
+              <Text style={styles.modalTitle}>Manage Wallet</Text>
+              <TouchableOpacity onPress={() => setWalletModalVisible(false)}>
+                <Ionicons name="close" size={22} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
+              <Text style={styles.modalHint}>Enter your card details and set your available balance.</Text>
+
+              <Text style={styles.walletFieldLabel}>Card Number</Text>
+              <View style={styles.walletInputRow}>
+                <Ionicons name="card-outline" size={18} color={Colors.textSecondary} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={styles.walletInput}
+                  placeholder="•••• •••• •••• ••••"
+                  placeholderTextColor={Colors.textSecondary}
+                  value={wCardNumber}
+                  onChangeText={(v) => setWCardNumber(formatCardInput(v))}
+                  keyboardType="number-pad"
+                  maxLength={19}
+                />
+                {wBrand ? <Text style={styles.wBrandPill}>{wBrand}</Text> : null}
+              </View>
+
+              <Text style={styles.walletFieldLabel}>Cardholder Name</Text>
+              <View style={styles.walletInputRow}>
+                <Ionicons name="person-outline" size={18} color={Colors.textSecondary} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={styles.walletInput}
+                  placeholder="FULL NAME"
+                  placeholderTextColor={Colors.textSecondary}
+                  value={wCardholder}
+                  onChangeText={setWCardholder}
+                  autoCapitalize="characters"
+                />
+              </View>
+
+              <Text style={styles.walletFieldLabel}>Expiry Date</Text>
+              <View style={styles.walletInputRow}>
+                <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={styles.walletInput}
+                  placeholder="MM/YY"
+                  placeholderTextColor={Colors.textSecondary}
+                  value={wExpiry}
+                  onChangeText={(v) => setWExpiry(formatExpiryInput(v))}
+                  keyboardType="number-pad"
+                  maxLength={5}
+                />
+              </View>
+
+              <Text style={styles.walletFieldLabel}>Available Balance (BD)</Text>
+              <View style={styles.walletInputRow}>
+                <Text style={[styles.amountPrefix, { marginRight: 8 }]}>BD</Text>
+                <TextInput
+                  style={styles.walletInput}
+                  placeholder="0.000"
+                  placeholderTextColor={Colors.textSecondary}
+                  value={wBalance}
+                  onChangeText={setWBalance}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.sendBtn, { marginTop: 20 }, wSaving && { opacity: 0.6 }]}
+                onPress={handleSaveWallet}
+                disabled={wSaving}
+              >
+                <Ionicons name="save-outline" size={18} color="#fff" />
+                <Text style={styles.sendBtnText}>{wSaving ? 'Saving...' : 'Save Wallet'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setWalletModalVisible(false)}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Requests Modal ───────────────────────────────────────────────────── */}
       <Modal visible={requestsVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -1082,4 +1270,21 @@ const styles = StyleSheet.create({
   reqAcceptText: { color: '#fff', fontWeight: '600', fontSize: 13 },
   reqRejectBtn: { flex: 1, backgroundColor: Colors.card, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 10, paddingVertical: 9, alignItems: 'center' },
   reqRejectText: { color: Colors.textPrimary, fontWeight: '600', fontSize: 13 },
+  // Card display in header
+  cardDisplay: {
+    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: 16,
+    marginBottom: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+  },
+  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  cardChipIcon: { width: 28, height: 20, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
+  cardBrand: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.85)', letterSpacing: 1 },
+  cardNumber: { fontSize: 19, fontWeight: '700', color: '#FFFFFF', letterSpacing: 4, marginBottom: 14 },
+  cardBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  cardFieldLabel: { fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.6)', letterSpacing: 1, marginBottom: 2 },
+  cardFieldValue: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+  // Wallet modal inputs
+  walletFieldLabel: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6, marginTop: 12 },
+  walletInputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 14, height: 52, backgroundColor: Colors.background },
+  walletInput: { flex: 1, fontSize: 15, color: Colors.textPrimary },
+  wBrandPill: { fontSize: 11, fontWeight: '700', color: Colors.primary, backgroundColor: Colors.primaryLight, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
 });

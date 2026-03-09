@@ -327,4 +327,37 @@ export async function recordRepayment(
   return res.data;
 }
 
+// ── Wallet ────────────────────────────────────────────────────────────────────
+
+export interface WalletResponse {
+  balance: number;
+  last4: string | null;
+  brand: string | null;
+  cardholderName: string | null;
+  expiryMonth: number | null;
+  expiryYear: number | null;
+  hasCard: boolean;
+}
+
+export async function getWallet(): Promise<WalletResponse> {
+  const res = await api.get<WalletResponse>('/api/wallet');
+  return res.data;
+}
+
+export async function saveWalletCard(data: {
+  last4: string;
+  brand: string;
+  cardholderName: string;
+  expiryMonth: number;
+  expiryYear: number;
+}): Promise<WalletResponse> {
+  const res = await api.put<WalletResponse>('/api/wallet/card', data);
+  return res.data;
+}
+
+export async function updateWalletBalance(balance: number): Promise<WalletResponse> {
+  const res = await api.put<WalletResponse>('/api/wallet/balance', { balance });
+  return res.data;
+}
+
 export default api;
