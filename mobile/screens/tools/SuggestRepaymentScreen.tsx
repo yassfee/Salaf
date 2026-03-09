@@ -57,11 +57,7 @@ export default function SuggestRepaymentScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>Repayment Planner</Text>
-        <View style={styles.headerRight} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -101,7 +97,7 @@ export default function SuggestRepaymentScreen() {
             : 'No budget entered — showing full priority order.'}
         </Text>
 
-        <PrimaryButton title={loading ? 'Generating...' : '💡 Generate Plan'} onPress={handleSuggest} disabled={loading} />
+        <PrimaryButton title={loading ? 'Generating...' : 'Generate Plan'} onPress={handleSuggest} disabled={loading} />
         {loading && <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />}
 
         {/* Plan results */}

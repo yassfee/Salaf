@@ -178,90 +178,87 @@ export default function RequestsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Requests</Text>
-        <Text style={styles.subtitle}>
-          {pendingCount > 0 ? `${pendingCount} awaiting your response` : 'No pending requests'}
-        </Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header — scrolls with content */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Requests</Text>
+          <Text style={styles.subtitle}>
+            {pendingCount > 0 ? `${pendingCount} awaiting your response` : 'No pending requests'}
+          </Text>
 
-        {/* Tab switcher */}
-        <View style={styles.tabRow}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'incoming' && styles.tabActive]}
-            onPress={() => setActiveTab('incoming')}
-          >
-            <Text style={[styles.tabText, activeTab === 'incoming' && styles.tabTextActive]}>
-              Incoming
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'borrow-requests' && styles.tabActive]}
-            onPress={() => setActiveTab('borrow-requests')}
-          >
-            <Text style={[styles.tabText, activeTab === 'borrow-requests' && styles.tabTextActive]}>
-              Borrow Requests
-            </Text>
-            {borrowRequests.filter((l) => l.status === 'BORROW_REQUESTED').length > 0 && (
-              <View style={styles.tabBadge}>
-                <Text style={styles.tabBadgeText}>
-                  {borrowRequests.filter((l) => l.status === 'BORROW_REQUESTED').length}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          {/* Tab switcher */}
+          <View style={styles.tabRow}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'incoming' && styles.tabActive]}
+              onPress={() => setActiveTab('incoming')}
+            >
+              <Text style={[styles.tabText, activeTab === 'incoming' && styles.tabTextActive]}>
+                Incoming
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'borrow-requests' && styles.tabActive]}
+              onPress={() => setActiveTab('borrow-requests')}
+            >
+              <Text style={[styles.tabText, activeTab === 'borrow-requests' && styles.tabTextActive]}>
+                Borrow Requests
+              </Text>
+              {borrowRequests.filter((l) => l.status === 'BORROW_REQUESTED').length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>
+                    {borrowRequests.filter((l) => l.status === 'BORROW_REQUESTED').length}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.content}>
         {loading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={Colors.primary} />
           </View>
         ) : activeTab === 'incoming' ? (
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <View style={styles.px}>
-              {incomingLends.length === 0 ? (
-                <View style={styles.empty}>
-                  <Text style={styles.emptyText}>No incoming lend requests.</Text>
-                </View>
-              ) : (
-                <>
-                  {pendingOffers.length > 0 && (
-                    <>
-                      <Text style={styles.sectionLabel}>Pending Offers</Text>
-                      {pendingOffers.map(renderIncomingCard)}
-                    </>
-                  )}
-                  {sentRequests.length > 0 && (
-                    <>
-                      <Text style={styles.sectionLabel}>Your Sent Requests</Text>
-                      {sentRequests.map(renderIncomingCard)}
-                    </>
-                  )}
-                  {handledIncoming.length > 0 && (
-                    <>
-                      <Text style={styles.sectionLabel}>Handled</Text>
-                      {handledIncoming.map(renderIncomingCard)}
-                    </>
-                  )}
-                </>
-              )}
-            </View>
-          </ScrollView>
+          <View style={styles.px}>
+            {incomingLends.length === 0 ? (
+              <View style={styles.empty}>
+                <Text style={styles.emptyText}>No incoming lend requests.</Text>
+              </View>
+            ) : (
+              <>
+                {pendingOffers.length > 0 && (
+                  <>
+                    <Text style={styles.sectionLabel}>Pending Offers</Text>
+                    {pendingOffers.map(renderIncomingCard)}
+                  </>
+                )}
+                {sentRequests.length > 0 && (
+                  <>
+                    <Text style={styles.sectionLabel}>Your Sent Requests</Text>
+                    {sentRequests.map(renderIncomingCard)}
+                  </>
+                )}
+                {handledIncoming.length > 0 && (
+                  <>
+                    <Text style={styles.sectionLabel}>Handled</Text>
+                    {handledIncoming.map(renderIncomingCard)}
+                  </>
+                )}
+              </>
+            )}
+          </View>
         ) : (
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <View style={styles.px}>
-              {borrowRequests.length === 0 ? (
-                <View style={styles.empty}>
-                  <Text style={styles.emptyText}>No borrow requests received.</Text>
-                </View>
-              ) : (
-                borrowRequests.map(renderBorrowRequestCard)
-              )}
-            </View>
-          </ScrollView>
+          <View style={styles.px}>
+            {borrowRequests.length === 0 ? (
+              <View style={styles.empty}>
+                <Text style={styles.emptyText}>No borrow requests received.</Text>
+              </View>
+            ) : (
+              borrowRequests.map(renderBorrowRequestCard)
+            )}
+          </View>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -277,7 +274,7 @@ const styles = StyleSheet.create({
   tabRow: { flexDirection: 'row', marginTop: 14, gap: 8 },
   tab: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10,
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
   tabActive: { backgroundColor: '#FFFFFF' },
@@ -288,8 +285,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6, paddingVertical: 1, minWidth: 18, alignItems: 'center',
   },
   tabBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-  content: { flex: 1, backgroundColor: Colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  center: { paddingVertical: 60, alignItems: 'center' },
   px: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
   sectionLabel: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary, marginBottom: 8, marginTop: 4 },
   card: { marginBottom: 12 },

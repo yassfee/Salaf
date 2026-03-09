@@ -70,20 +70,26 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="lends"
+        name="suggest-repayment"
         options={{
-          title: 'Lends',
+          title: 'Repayment',
           tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon name="bar-chart-outline" color={color} size={size} focused={focused} />
+            <TabIcon name="bulb-outline" color={color} size={size} focused={focused} />
           ),
         }}
       />
       <Tabs.Screen
         name="requests"
         options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="lends"
+        options={{
           title: '',
           tabBarIcon: () => (
-            <Ionicons name="swap-horizontal-outline" size={26} color="#FFFFFF" />
+            <Ionicons name="swap-vertical-outline" size={26} color="#FFFFFF" />
           ),
           tabBarButton: (props) => <CenterTabButton {...props} />,
         }}
@@ -120,15 +126,15 @@ const styles = StyleSheet.create({
   centerBtn: {
     width: 60,
     height: 60,
-    borderRadius: 30,
+    borderRadius: 16,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
   iconWrapper: {
     width: 38,

@@ -9,6 +9,8 @@ import com.salaf.lend.dto.LendResponseDto;
 import com.salaf.lend.entity.LendRequest;
 import com.salaf.lend.entity.LendStatus;
 import com.salaf.lend.repository.LendRequestRepository;
+import com.salaf.notification.entity.Notification;
+import com.salaf.notification.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ public class LendRequestService {
 
     private final LendRequestRepository lendRequestRepository;
     private final ContactRepository contactRepository;
+    private final NotificationRepository notificationRepository;
 
     @Transactional
     public LendResponseDto createLend(LendRequestDto req, User lender) {
@@ -39,7 +42,19 @@ public class LendRequestService {
         lend.setNote(req.getNote());
         lend.setStatus(LendStatus.PENDING);
 
-        return LendResponseDto.from(lendRequestRepository.save(lend));
+        LendRequest saved = lendRequestRepository.save(lend);
+
+        // Notify borrower if they have a linked user account
+        if (borrower.getLinkedUser() != null) {
+            Notification n = new Notification();
+            n.setLendRequest(saved);
+            n.setSender(lender);
+            n.setReceiver(borrower.getLinkedUser());
+            n.setNote(lender.getName() + " sent you a lend request of " + req.getAmount() + " BD");
+            notificationRepository.save(n);
+        }
+
+        return LendResponseDto.from(saved);
     }
 
     public List<LendResponseDto> getLends(User lender) {
@@ -143,7 +158,17 @@ public class LendRequestService {
         lend.setNote(dto.getNote());
         lend.setStatus(LendStatus.BORROW_REQUESTED);
 
-        return LendResponseDto.fromBorrowerView(lendRequestRepository.save(lend));
+        LendRequest savedBorrow = lendRequestRepository.save(lend);
+
+        // Notify the lender about the borrow request
+        Notification n = new Notification();
+        n.setLendRequest(savedBorrow);
+        n.setSender(borrower);
+        n.setReceiver(lender);
+        n.setNote(borrower.getName() + " sent you a borrow request for " + dto.getAmount() + " BD");
+        notificationRepository.save(n);
+
+        return LendResponseDto.fromBorrowerView(savedBorrow);
     }
 
     /** Returns all borrow requests directed at the current user as a lender. */

@@ -93,54 +93,56 @@ export default function ContactsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.title}>My Contacts</Text>
-            <Text style={styles.subtitle}>{contacts.length} people</Text>
-          </View>
-          <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
-            <Ionicons name="add" size={22} color="#121212" />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.searchWrapper}>
-          <Ionicons name="search-outline" size={17} color={Colors.textSecondary} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search contacts..."
-            placeholderTextColor={Colors.textSecondary}
-            value={search}
-            onChangeText={setSearch}
-          />
-        </View>
-      </View>
-
       {/* Content */}
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.list}
-        >
-          {filtered.map((contact) => (
-            <ContactCard
-              key={contact.id}
-              contact={{ ...contact, trustScore: 0 }}
-              onPress={() => router.push(`/contact-details?id=${contact.id}`)}
-            />
-          ))}
-          {filtered.length === 0 && (
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>No contacts found.</Text>
+      <View style={styles.contentArea}>
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          {/* Header — scrolls with content */}
+          <View style={styles.header}>
+            <View style={styles.headerRow}>
+              <View>
+                <Text style={styles.title}>My Contacts</Text>
+                <Text style={styles.subtitle}>{contacts.length} people</Text>
+              </View>
             </View>
-          )}
+            <View style={styles.searchWrapper}>
+              <Ionicons name="search-outline" size={17} color={Colors.textSecondary} style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search contacts..."
+                placeholderTextColor={Colors.textSecondary}
+                value={search}
+                onChangeText={setSearch}
+              />
+            </View>
+          </View>
+
+          <View style={styles.list}>
+            {loading ? (
+              <View style={styles.center}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+              </View>
+            ) : (
+              <>
+                {filtered.map((contact) => (
+                  <ContactCard
+                    key={contact.id}
+                    contact={{ ...contact, trustScore: 0 }}
+                    onPress={() => router.push(`/contact-details?id=${contact.id}`)}
+                  />
+                ))}
+                {filtered.length === 0 && (
+                  <View style={styles.empty}>
+                    <Text style={styles.emptyText}>No contacts found.</Text>
+                  </View>
+                )}
+              </>
+            )}
+          </View>
         </ScrollView>
-      )}
+        <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
+          <Ionicons name="add" size={28} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
       {/* Add Contact Modal — search by email/phone */}
       <Modal visible={modalVisible} transparent animationType="slide">
@@ -231,9 +233,13 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 26, fontWeight: '800', color: '#FFFFFF' },
   subtitle: { fontSize: 13, color: '#FFFFFF', opacity: 0.75, marginTop: 2 },
-  addBtn: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: '#EFEFEF', alignItems: 'center', justifyContent: 'center',
+  contentArea: { flex: 1 },
+  fab: {
+    position: 'absolute', bottom: 24, right: 24,
+    width: 56, height: 56, borderRadius: 16,
+    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
   },
   searchWrapper: {
     flexDirection: 'row', alignItems: 'center',
@@ -241,9 +247,8 @@ const styles = StyleSheet.create({
   },
   searchIcon: { marginRight: 10 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
-  content: { flex: 1, backgroundColor: Colors.background },
-  list: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  list: { paddingHorizontal: 20, paddingBottom: 24 },
+  center: { paddingVertical: 60, alignItems: 'center' },
   empty: { paddingVertical: 40, alignItems: 'center' },
   emptyText: { fontSize: 14, color: Colors.textSecondary },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
