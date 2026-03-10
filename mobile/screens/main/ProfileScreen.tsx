@@ -78,7 +78,7 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          <TouchableOpacity style={styles.settingsBtn} onPress={() => {}}>
+          <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push('/settings')}>
             <Text style={styles.settingsText}>Settings</Text>
           </TouchableOpacity>
           <View style={styles.spacer} />

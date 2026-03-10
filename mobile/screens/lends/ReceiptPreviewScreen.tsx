@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { Colors } from '../../constants/colors';
-import { MOCK_LENDS, MOCK_REPAYMENTS } from '../../constants/mockData';
+import { getLendById, getCurrentUser, LendResponse } from '../../services/api';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import OutlinedButton from '../../components/ui/OutlinedButton';
 import { formatDate, formatCurrency } from '../../utils/formatCurrency';
@@ -19,11 +21,82 @@ import { formatDate, formatCurrency } from '../../utils/formatCurrency';
 export default function ReceiptPreviewScreen() {
   const router = useRouter();
   const { lendId } = useLocalSearchParams<{ lendId: string }>();
+  
+  const [lend, setLend] = useState<LendResponse | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const lend = MOCK_LENDS.find((l) => l.id === Number(lendId)) ?? MOCK_LENDS[0];
-  const repayment = MOCK_REPAYMENTS.find((r) => r.lendId === lend.id);
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [lendData, userData] = await Promise.all([
+          getLendById(Number(lendId)),
+          getCurrentUser()
+        ]);
+        setLend(lendData);
+        setCurrentUser(userData);
+      } catch (error) {
+        Alert.alert('Error', 'Failed to load receipt data');
+        router.back();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (lendId) loadData();
+  }, [lendId]);
+
+  const handleDownloadPDF = async () => {
+    if (!lend) return;
+    try {
+      const pdfUrl = `http://localhost:8080/api/pdf/receipt/${lend.id}`;
+      await Clipboard.setStringAsync(pdfUrl);
+      Alert.alert('Success', 'PDF download URL copied to clipboard');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to generate PDF URL');
+    }
+  };
+
+  const handleShareReceipt = async () => {
+    if (!lend) return;
+    try {
+      const pdfUrl = `http://localhost:8080/api/pdf/receipt/${lend.id}`;
+      await Clipboard.setStringAsync(pdfUrl);
+      Alert.alert('Success', 'Receipt URL copied to clipboard for sharing');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to generate share URL');
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading receipt...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!lend || !currentUser) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Receipt not found</Text>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const receiptNo = `RCP-${String(lend.id).padStart(5, '0')}`;
   const today = formatDate(new Date().toISOString());
+  const isLender = lend.type === 'LENT';
+  const lenderName = isLender ? currentUser.name : lend.lenderName;
+  const borrowerName = isLender ? lend.contact : currentUser.name;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -34,7 +107,7 @@ export default function ReceiptPreviewScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Receipt Preview</Text>
         <TouchableOpacity
-          onPress={() => Alert.alert('Share', 'Sharing receipt...')}
+          onPress={handleShareReceipt}
           style={styles.shareBtn}
         >
           <Ionicons name="share-outline" size={24} color={Colors.primary} />
@@ -46,7 +119,7 @@ export default function ReceiptPreviewScreen() {
         <View style={styles.receiptCard}>
           {/* Top Section */}
           <View style={styles.receiptHeader}>
-            <Text style={styles.receiptLogo}>💰 LendWise</Text>
+            <Text style={styles.receiptLogo}>Salaf</Text>
             <Text style={styles.receiptTitle}>Payment Receipt</Text>
           </View>
           <View style={styles.divider} />
@@ -66,13 +139,13 @@ export default function ReceiptPreviewScreen() {
           {/* Parties */}
           <View style={styles.receiptRow}>
             <Text style={styles.receiptKey}>Lender</Text>
-            <Text style={styles.receiptValue}>Yasser Al-Ansari</Text>
+            <Text style={styles.receiptValue}>{lenderName}</Text>
           </View>
           <View style={styles.receiptRow}>
             <Text style={styles.receiptKey}>Borrower</Text>
             <View style={styles.valueCol}>
-              <Text style={styles.receiptValue}>{lend.contact}</Text>
-              <Text style={styles.receiptSub}>+973 3300 0000</Text>
+              <Text style={styles.receiptValue}>{borrowerName}</Text>
+              <Text style={styles.receiptSub}>{lend.lenderEmail || currentUser.email}</Text>
             </View>
           </View>
 
@@ -92,40 +165,46 @@ export default function ReceiptPreviewScreen() {
           <View style={styles.receiptRow}>
             <Text style={styles.receiptKey}>Remaining Balance</Text>
             <Text style={[styles.receiptValue, { color: Colors.danger }]}>
-              {formatCurrency(lend.amount - lend.paid)}
+              {formatCurrency(lend.remainingBalance)}
             </Text>
           </View>
           <View style={styles.receiptRow}>
-            <Text style={styles.receiptKey}>Transfer Ref</Text>
-            <Text style={styles.receiptValue}>{repayment?.ref ?? 'N/A'}</Text>
+            <Text style={styles.receiptKey}>Due Date</Text>
+            <Text style={styles.receiptValue}>{formatDate(lend.due)}</Text>
+          </View>
+          <View style={styles.receiptRow}>
+            <Text style={styles.receiptKey}>Status</Text>
+            <Text style={[styles.receiptValue, { color: lend.status === 'PAID' ? Colors.success : Colors.primary }]}>
+              {lend.status}
+            </Text>
           </View>
 
           <View style={styles.divider} />
 
           {/* Acknowledgement */}
-          <View style={styles.ackSection}>
-            <Text style={styles.ackText}>✅ Acknowledged by {lend.contact}</Text>
-            {lend.acknowledgedDate && (
-              <Text style={styles.ackDate}>{formatDate(lend.acknowledgedDate)}</Text>
-            )}
-          </View>
+          {lend.status === 'ACCEPTED' || lend.status === 'PARTIALLY_PAID' || lend.status === 'PAID' ? (
+            <View style={styles.ackSection}>
+              <Text style={styles.ackText}>Acknowledged by {borrowerName}</Text>
+              <Text style={styles.ackDate}>{formatDate(lend.createdAt)}</Text>
+            </View>
+          ) : null}
 
           <View style={styles.divider} />
 
           {/* Footer */}
-          <Text style={styles.receiptFooter}>Generated by LendWise</Text>
+          <Text style={styles.receiptFooter}>Generated by Salaf</Text>
         </View>
 
         {/* Actions */}
         <View style={styles.actions}>
           <PrimaryButton
-            title="⬇️ Download PDF"
-            onPress={() => Alert.alert('Download', 'PDF download started...')}
+            title="Download PDF"
+            onPress={handleDownloadPDF}
           />
           <View style={styles.spacer} />
           <OutlinedButton
-            title="⬆️ Share Receipt"
-            onPress={() => Alert.alert('Share', 'Sharing receipt...')}
+            title="Share Receipt"
+            onPress={handleShareReceipt}
           />
         </View>
       </ScrollView>
@@ -206,4 +285,37 @@ const styles = StyleSheet.create({
   },
   actions: { gap: 0 },
   spacer: { height: 12 },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  backButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
