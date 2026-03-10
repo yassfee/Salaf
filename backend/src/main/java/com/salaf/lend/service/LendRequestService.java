@@ -12,12 +12,15 @@ import com.salaf.lend.repository.LendRequestRepository;
 import com.salaf.notification.entity.Notification;
 import com.salaf.notification.entity.NotificationType;
 import com.salaf.notification.repository.NotificationRepository;
+import com.salaf.wallet.entity.Wallet;
+import com.salaf.wallet.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -27,6 +30,17 @@ public class LendRequestService {
     private final LendRequestRepository lendRequestRepository;
     private final ContactRepository contactRepository;
     private final NotificationRepository notificationRepository;
+    private final WalletRepository walletRepository;
+
+    private void adjustBalance(User user, BigDecimal delta) {
+        Wallet wallet = walletRepository.findByUser(user).orElseGet(() -> {
+            Wallet w = new Wallet();
+            w.setUser(user);
+            return walletRepository.save(w);
+        });
+        wallet.setBalance(wallet.getBalance().add(delta));
+        walletRepository.save(wallet);
+    }
 
     @Transactional
     public LendResponseDto createLend(LendRequestDto req, User lender) {
@@ -96,7 +110,13 @@ public class LendRequestService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Lend is not in PENDING status");
         }
         lend.setStatus(LendStatus.ACCEPTED);
-        return LendResponseDto.fromBorrowerView(lendRequestRepository.save(lend));
+        LendResponseDto result = LendResponseDto.fromBorrowerView(lendRequestRepository.save(lend));
+        // Money exchanged: lender pays out, borrower receives
+        adjustBalance(lend.getLender(), lend.getAmount().negate());
+        if (lend.getBorrower().getLinkedUser() != null) {
+            adjustBalance(lend.getBorrower().getLinkedUser(), lend.getAmount());
+        }
+        return result;
     }
 
     /** Borrower rejects a pending lend. */
@@ -191,7 +211,13 @@ public class LendRequestService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Not a pending borrow request");
         }
         lend.setStatus(LendStatus.ACCEPTED);
-        return LendResponseDto.from(lendRequestRepository.save(lend));
+        LendResponseDto result = LendResponseDto.from(lendRequestRepository.save(lend));
+        // Money exchanged: lender pays out, borrower receives
+        adjustBalance(lend.getLender(), lend.getAmount().negate());
+        if (lend.getBorrower().getLinkedUser() != null) {
+            adjustBalance(lend.getBorrower().getLinkedUser(), lend.getAmount());
+        }
+        return result;
     }
 
     /** Lender declines a borrow request. */

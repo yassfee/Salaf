@@ -343,6 +343,10 @@ export async function getMyRepayments(): Promise<MyRepaymentItem[]> {
   return res.data;
 }
 
+export async function deleteRepayment(repaymentId: number): Promise<void> {
+  await api.delete(`/api/repayments/${repaymentId}`);
+}
+
 // ── Wallet ────────────────────────────────────────────────────────────────────
 
 export interface WalletResponse {

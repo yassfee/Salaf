@@ -13,6 +13,11 @@ import {
 } from '../../services/api';
 import { formatCurrency, formatDate } from '../../utils/formatCurrency';
 
+function lendRoute(n: NotificationItem): string {
+  if (n.type === 'BORROW_REQUEST') return `/lend-details?id=${n.lendId}`;
+  return `/lend-details?id=${n.lendId}&incoming=true`;
+}
+
 export default function NotificationsScreen() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -37,7 +42,7 @@ export default function NotificationsScreen() {
       await markNotificationRead(n.id).catch(() => {});
       setNotifications((prev) => prev.map((x) => x.id === n.id ? { ...x, read: true } : x));
     }
-    router.push(`/lend-details?id=${n.lendId}&incoming=true`);
+    router.push(lendRoute(n) as any);
   };
 
   const handleDelete = (id: number) => {
@@ -88,53 +93,41 @@ export default function NotificationsScreen() {
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
           {notifications.map((n) => (
-            <TouchableOpacity
-              key={n.id}
-              style={[styles.card, !n.read && styles.cardUnread]}
-              activeOpacity={0.8}
-              onPress={() => handleTap(n)}
-            >
-              <View style={styles.cardLeft}>
-                <View style={[styles.iconWrap, !n.read && styles.iconWrapUnread]}>
-                  <Ionicons name="notifications" size={20} color={Colors.primary} />
+            <View key={n.id} style={[styles.card, !n.read && styles.cardUnread]}>
+              <TouchableOpacity
+                style={styles.cardTouchable}
+                activeOpacity={0.7}
+                onPress={() => handleTap(n)}
+              >
+                <View style={styles.iconWrap}>
+                  <Ionicons name="notifications" size={18} color={Colors.primary} />
                 </View>
-              </View>
-
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>
-                  Reminder from <Text style={styles.bold}>{n.senderName}</Text>
-                </Text>
-                <View style={styles.amountRow}>
-                  <View style={styles.amountChip}>
-                    <Text style={styles.amountChipLabel}>Total</Text>
-                    <Text style={styles.amountChipValue}>{formatCurrency(n.amount)}</Text>
-                  </View>
-                  <View style={styles.amountChip}>
-                    <Text style={styles.amountChipLabel}>Paid</Text>
-                    <Text style={[styles.amountChipValue, { color: Colors.success }]}>{formatCurrency(n.amountPaid)}</Text>
-                  </View>
-                  <View style={styles.amountChip}>
-                    <Text style={styles.amountChipLabel}>Remaining</Text>
-                    <Text style={[styles.amountChipValue, { color: Colors.danger }]}>{formatCurrency(n.remainingBalance)}</Text>
-                  </View>
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardTitle}>
+                    {n.type === 'LEND_REQUEST'
+                      ? <><Text style={styles.bold}>{n.senderName}</Text> sent you a lend request</>
+                      : n.type === 'BORROW_REQUEST'
+                      ? <><Text style={styles.bold}>{n.senderName}</Text> wants to borrow from you</>
+                      : <>Reminder from <Text style={styles.bold}>{n.senderName}</Text></>}
+                  </Text>
+                  <Text style={styles.cardSub}>
+                    {n.type === 'REMINDER'
+                      ? <>Paid <Text style={{ color: Colors.success, fontWeight: '600' }}>{formatCurrency(n.amountPaid)}</Text>{' · '}Remaining <Text style={{ color: Colors.danger, fontWeight: '600' }}>{formatCurrency(n.remainingBalance)}</Text></>
+                      : <Text style={{ color: Colors.primary, fontWeight: '600' }}>{formatCurrency(n.amount)}</Text>}
+                  </Text>
+                  {n.note ? <Text style={styles.cardNote}>"{n.note}"</Text> : null}
+                  <Text style={styles.cardTime}>{formatDate(n.createdAt)}</Text>
                 </View>
-                {n.note ? (
-                  <Text style={styles.note}>"{n.note}"</Text>
-                ) : null}
-                <Text style={styles.time}>{formatDate(n.createdAt)}</Text>
-              </View>
+              </TouchableOpacity>
 
-              <View style={styles.cardActions}>
-                {!n.read && <View style={styles.unreadDot} />}
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={() => handleDelete(n.id)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="trash-outline" size={18} color={Colors.danger} />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteBtn}
+                onPress={() => handleDelete(n.id)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="trash-outline" size={16} color={Colors.danger} />
+              </TouchableOpacity>
+            </View>
           ))}
         </ScrollView>
       )}
@@ -154,25 +147,27 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: Colors.textSecondary },
   list: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24 },
   card: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    backgroundColor: Colors.card, borderRadius: 16, padding: 14,
-    marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    flexDirection: 'row', alignItems: 'center',
+    padding: 12, borderRadius: 12,
+    backgroundColor: Colors.background, marginBottom: 8,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
   cardUnread: { backgroundColor: Colors.primaryLight },
-  cardLeft: { paddingTop: 2 },
-  iconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' },
-  iconWrapUnread: { backgroundColor: Colors.card },
+  cardTouchable: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  iconWrap: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center',
+  },
   cardBody: { flex: 1 },
-  cardTitle: { fontSize: 14, color: Colors.textPrimary, marginBottom: 8 },
+  cardTitle: { fontSize: 13, color: Colors.textPrimary, marginBottom: 2 },
   bold: { fontWeight: '700' },
-  amountRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
-  amountChip: { flex: 1, backgroundColor: Colors.background, borderRadius: 8, padding: 6, alignItems: 'center' },
-  amountChipLabel: { fontSize: 10, color: Colors.textSecondary, marginBottom: 2 },
-  amountChipValue: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary },
-  note: { fontSize: 13, color: Colors.textSecondary, fontStyle: 'italic', marginBottom: 4 },
-  time: { fontSize: 11, color: Colors.textSecondary },
-  cardActions: { alignItems: 'flex-end', gap: 8, paddingTop: 2 },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary },
-  deleteBtn: { padding: 2 },
+  cardSub: { fontSize: 12, color: Colors.textSecondary },
+  cardNote: { fontSize: 12, color: Colors.textPrimary, fontStyle: 'italic', marginTop: 4 },
+  cardTime: { fontSize: 11, color: Colors.textSecondary, marginTop: 4 },
+  deleteBtn: {
+    width: 28, height: 28, borderRadius: 8,
+    borderWidth: 1.5, borderColor: Colors.danger,
+    alignItems: 'center', justifyContent: 'center', marginLeft: 8,
+  },
 });

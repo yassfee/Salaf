@@ -9,14 +9,13 @@ import { LendStatus } from '../../types';
 import LendCard from '../../components/cards/LendCard';
 
 type DirectionTab = 'Lent' | 'Borrowed';
-type FilterChip = 'All' | 'Pending' | 'Active' | 'Overdue' | 'Paid';
+type FilterChip = 'All' | 'Active' | 'Overdue' | 'Paid';
 
-const filterChips: FilterChip[] = ['All', 'Pending', 'Active', 'Overdue', 'Paid'];
+const filterChips: FilterChip[] = ['All', 'Active', 'Overdue', 'Paid'];
 
 const statusMap: Record<FilterChip, LendStatus[]> = {
-  All: ['PENDING', 'ACCEPTED', 'ACTIVE', 'PARTIALLY_PAID', 'PAID', 'REJECTED', 'OVERDUE'],
-  Pending: ['PENDING', 'ACCEPTED'],
-  Active: ['ACTIVE', 'PARTIALLY_PAID'],
+  All: ['PENDING', 'BORROW_REQUESTED', 'ACCEPTED', 'ACTIVE', 'PARTIALLY_PAID', 'OVERDUE', 'PAID', 'REJECTED'],
+  Active: ['ACCEPTED', 'ACTIVE', 'PARTIALLY_PAID'],
   Overdue: ['OVERDUE'],
   Paid: ['PAID'],
 };
@@ -57,7 +56,7 @@ export default function LendsScreen() {
               <View>
                 <Text style={styles.title}>My Lends</Text>
                 <Text style={styles.subtitle}>
-                  {tab === 'Lent' ? lends.length : incoming.length} records
+                  {filtered.length} records
                 </Text>
               </View>
             </View>
@@ -127,11 +126,6 @@ export default function LendsScreen() {
           )}
         </ScrollView>
 
-        {tab === 'Lent' && (
-          <TouchableOpacity style={styles.fab} onPress={() => router.push('/create-lend')}>
-            <Ionicons name="add" size={28} color="#fff" />
-          </TouchableOpacity>
-        )}
       </View>
     </SafeAreaView>
   );

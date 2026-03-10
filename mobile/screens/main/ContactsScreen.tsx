@@ -101,7 +101,9 @@ export default function ContactsScreen() {
             <View style={styles.headerRow}>
               <View>
                 <Text style={styles.title}>My Contacts</Text>
-                <Text style={styles.subtitle}>{contacts.length} people</Text>
+                <Text style={styles.subtitle}>
+                  {contacts.length} people · {contacts.filter(c => c.linkedUserId).length} on Salaf
+                </Text>
               </View>
             </View>
             <View style={styles.searchWrapper}>
@@ -126,7 +128,7 @@ export default function ContactsScreen() {
                 {filtered.map((contact) => (
                   <ContactCard
                     key={contact.id}
-                    contact={{ ...contact, trustScore: 0 }}
+                    contact={contact}
                     onPress={() => router.push(`/contact-details?id=${contact.id}`)}
                   />
                 ))}
@@ -247,7 +249,7 @@ const styles = StyleSheet.create({
   },
   searchIcon: { marginRight: 10 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
-  list: { paddingHorizontal: 20, paddingBottom: 24 },
+  list: { paddingHorizontal: 20, paddingBottom: 24, paddingTop: 16 },
   center: { paddingVertical: 60, alignItems: 'center' },
   empty: { paddingVertical: 40, alignItems: 'center' },
   emptyText: { fontSize: 14, color: Colors.textSecondary },

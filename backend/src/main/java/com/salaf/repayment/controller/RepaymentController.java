@@ -22,6 +22,14 @@ public class RepaymentController {
         this.repaymentService = repaymentService;
     }
 
+    @DeleteMapping("/api/repayments/{repaymentId}")
+    public ResponseEntity<Void> deleteRepayment(
+            @PathVariable Long repaymentId,
+            @AuthenticationPrincipal User currentUser) {
+        repaymentService.deleteRepayment(repaymentId, currentUser);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/api/repayments/mine")
     public ResponseEntity<List<MyRepaymentResponse>> getMyRepayments(@AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(repaymentService.getMyRepayments(currentUser));

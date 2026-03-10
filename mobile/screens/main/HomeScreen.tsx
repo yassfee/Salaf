@@ -121,7 +121,7 @@ export default function HomeScreen() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [user, sum, due, myLends, count, w] = await Promise.all([
+      const [userR, sumR, dueR, lendsR, countR, walletR] = await Promise.allSettled([
         getCurrentUser(),
         getDashboardSummary(),
         getDueSoon(),
@@ -129,14 +129,12 @@ export default function HomeScreen() {
         getUnreadNotificationCount(),
         getWallet(),
       ]);
-      if (user) setUserName(user.name);
-      setSummary(sum);
-      setDueSoon(due);
-      setLends(myLends);
-      setUnreadCount(count);
-      setWallet(w);
-    } catch {
-      // silently fail — show zeros
+      if (userR.status === 'fulfilled' && userR.value) setUserName(userR.value.name);
+      if (sumR.status === 'fulfilled') setSummary(sumR.value);
+      if (dueR.status === 'fulfilled') setDueSoon(dueR.value);
+      if (lendsR.status === 'fulfilled') setLends(lendsR.value);
+      if (countR.status === 'fulfilled') setUnreadCount(countR.value);
+      if (walletR.status === 'fulfilled') setWallet(walletR.value);
     } finally {
       setLoading(false);
     }
@@ -185,10 +183,6 @@ export default function HomeScreen() {
     try {
       const data = await getNotifications();
       setNotifications(data);
-      if (data.some((n) => !n.read)) {
-        await markAllNotificationsRead();
-        setUnreadCount(0);
-      }
     } catch {
       // ignore
     } finally {
@@ -415,9 +409,9 @@ export default function HomeScreen() {
             </View>
             <TouchableOpacity style={styles.bellBtn} onPress={handleOpenBell}>
               <Ionicons name="notifications-outline" size={22} color="#121212" />
-              {notifications.length > 0 && (
+              {unreadCount > 0 && (
                 <View style={styles.bellBadge}>
-                  <Text style={styles.bellBadgeText}>{notifications.length > 9 ? '9+' : notifications.length}</Text>
+                  <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -654,6 +648,7 @@ export default function HomeScreen() {
                         try {
                           await markNotificationRead(n.id);
                           setNotifications((prev) => prev.filter((x) => x.id !== n.id));
+                          if (!n.read) setUnreadCount((prev) => Math.max(0, prev - 1));
                         } catch { /* ignore */ }
                       }}
                     >

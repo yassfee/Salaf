@@ -9,6 +9,8 @@ import com.salaf.repayment.dto.RepaymentRequest;
 import com.salaf.repayment.dto.RepaymentResponse;
 import com.salaf.repayment.entity.Repayment;
 import com.salaf.repayment.repository.RepaymentRepository;
+import com.salaf.wallet.entity.Wallet;
+import com.salaf.wallet.repository.WalletRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,11 +24,25 @@ import java.util.stream.Collectors;
 public class RepaymentService {
     private final RepaymentRepository repaymentRepository;
     private final LendRequestRepository lendRequestRepository;
+    private final WalletRepository walletRepository;
 
-    public RepaymentService(RepaymentRepository repaymentRepository, 
-                           LendRequestRepository lendRequestRepository) {
+    public RepaymentService(RepaymentRepository repaymentRepository,
+                           LendRequestRepository lendRequestRepository,
+                           WalletRepository walletRepository) {
         this.repaymentRepository = repaymentRepository;
         this.lendRequestRepository = lendRequestRepository;
+        this.walletRepository = walletRepository;
+    }
+
+    private void adjustBalance(User user, BigDecimal delta) {
+        if (user == null) return;
+        Wallet wallet = walletRepository.findByUser(user).orElseGet(() -> {
+            Wallet w = new Wallet();
+            w.setUser(user);
+            return walletRepository.save(w);
+        });
+        wallet.setBalance(wallet.getBalance().add(delta));
+        walletRepository.save(wallet);
     }
 
     @Transactional
@@ -65,6 +81,10 @@ public class RepaymentService {
 
         lendRequestRepository.save(lendRequest);
 
+        // Adjust wallet balances: borrower pays out, lender receives
+        adjustBalance(currentUser, request.getAmountPaid().negate());
+        adjustBalance(lendRequest.getLender(), request.getAmountPaid());
+
         // Return summary
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Repayment recorded successfully");
@@ -88,8 +108,41 @@ public class RepaymentService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public void deleteRepayment(Long repaymentId, User currentUser) {
+        Repayment repayment = repaymentRepository.findById(repaymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Repayment not found"));
+
+        LendRequest lend = repayment.getLendRequest();
+        boolean isBorrower = lend.getBorrower().getLinkedUser() != null &&
+                lend.getBorrower().getLinkedUser().getId().equals(currentUser.getId());
+        if (!isBorrower) {
+            throw new IllegalArgumentException("Access denied");
+        }
+
+        // Restore remaining balance
+        BigDecimal restored = lend.getRemainingBalance().add(repayment.getAmountPaid());
+        lend.setRemainingBalance(restored);
+
+        // Recalculate status
+        if (restored.compareTo(lend.getAmount()) == 0) {
+            lend.setStatus(LendStatus.ACTIVE);
+        } else {
+            lend.setStatus(LendStatus.PARTIALLY_PAID);
+        }
+
+        lendRequestRepository.save(lend);
+
+        // Reverse the wallet adjustment: borrower gets back, lender gives back
+        adjustBalance(currentUser, repayment.getAmountPaid());
+        adjustBalance(lend.getLender(), repayment.getAmountPaid().negate());
+
+        repaymentRepository.delete(repayment);
+    }
+
+    @Transactional(readOnly = true)
     public List<MyRepaymentResponse> getMyRepayments(User currentUser) {
-        return repaymentRepository.findByLendRequest_Borrower_LinkedUserOrderByPaidAtDesc(currentUser)
+        return repaymentRepository.findByBorrowerLinkedUser(currentUser)
                 .stream()
                 .map(MyRepaymentResponse::from)
                 .collect(Collectors.toList());

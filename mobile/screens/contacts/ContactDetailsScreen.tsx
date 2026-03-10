@@ -1,23 +1,128 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  ActivityIndicator, Alert, Modal, TextInput,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
-import { MOCK_CONTACTS, MOCK_LENDS } from '../../constants/mockData';
+import {
+  getContacts, getLends, createLend, createBorrowRequest,
+  ContactResponse, LendResponse,
+} from '../../services/api';
 import CardContainer from '../../components/ui/CardContainer';
-import TrustBadge from '../../components/ui/TrustBadge';
-import ProgressBar from '../../components/ui/ProgressBar';
 import StatusBadge from '../../components/ui/StatusBadge';
-import PrimaryButton from '../../components/ui/PrimaryButton';
+import DatePickerField from '../../components/ui/DatePickerField';
 import { getInitials, formatDate, formatCurrency } from '../../utils/formatCurrency';
 
 export default function ContactDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const contactId = Number(id);
 
-  const contact = MOCK_CONTACTS.find((c) => c.id === Number(id)) ?? MOCK_CONTACTS[0];
-  const contactLends = MOCK_LENDS.filter((l) => l.contactId === contact.id);
+  const [contact, setContact] = useState<ContactResponse | null>(null);
+  const [lends, setLends] = useState<LendResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Lend modal state
+  const [lendVisible, setLendVisible] = useState(false);
+  const [lendAmount, setLendAmount] = useState('');
+  const [lendDueDate, setLendDueDate] = useState('');
+  const [lendNote, setLendNote] = useState('');
+  const [lendErrors, setLendErrors] = useState<Record<string, string>>({});
+  const [lendSubmitting, setLendSubmitting] = useState(false);
+  const [lendAgreed, setLendAgreed] = useState(false);
+
+  // Borrow modal state
+  const [borrowVisible, setBorrowVisible] = useState(false);
+  const [borrowAmount, setBorrowAmount] = useState('');
+  const [borrowDueDate, setBorrowDueDate] = useState('');
+  const [borrowNote, setBorrowNote] = useState('');
+  const [borrowErrors, setBorrowErrors] = useState<Record<string, string>>({});
+  const [borrowSubmitting, setBorrowSubmitting] = useState(false);
+  const [borrowAgreed, setBorrowAgreed] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [contacts, allLends] = await Promise.all([getContacts(), getLends()]);
+      const found = contacts.find((c) => c.id === contactId) ?? null;
+      setContact(found);
+      setLends(allLends.filter((l) => l.contactId === contactId));
+    } catch {
+      Alert.alert('Error', 'Failed to load contact details.');
+    } finally {
+      setLoading(false);
+    }
+  }, [contactId]);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const closeLend = () => {
+    setLendVisible(false);
+    setLendAmount(''); setLendDueDate(''); setLendNote('');
+    setLendErrors({}); setLendAgreed(false);
+  };
+
+  const validateLend = () => {
+    const errs: Record<string, string> = {};
+    if (!lendAmount || parseFloat(lendAmount) <= 0) errs.amount = 'Amount must be greater than 0';
+    if (!lendDueDate) errs.dueDate = 'Due date is required';
+    if (!lendAgreed) errs.agreed = 'You must confirm the lending agreement';
+    setLendErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSubmitLend = async () => {
+    if (!validateLend()) return;
+    try {
+      setLendSubmitting(true);
+      await createLend(contactId, parseFloat(lendAmount), lendDueDate, lendNote || undefined);
+      closeLend();
+      await load();
+    } catch (e: any) {
+      const msg = e?.response?.data?.message ?? e?.message ?? 'Failed to create lend.';
+      Alert.alert('Error', msg);
+    } finally {
+      setLendSubmitting(false);
+    }
+  };
+
+  const closeBorrow = () => {
+    setBorrowVisible(false);
+    setBorrowAmount(''); setBorrowDueDate(''); setBorrowNote('');
+    setBorrowErrors({}); setBorrowAgreed(false);
+  };
+
+  const validateBorrow = () => {
+    const errs: Record<string, string> = {};
+    if (!borrowAmount || parseFloat(borrowAmount) <= 0) errs.amount = 'Amount must be greater than 0';
+    if (!borrowDueDate) errs.dueDate = 'Due date is required';
+    if (!borrowAgreed) errs.agreed = 'You must confirm the borrowing agreement';
+    setBorrowErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSubmitBorrow = async () => {
+    if (!validateBorrow()) return;
+    try {
+      setBorrowSubmitting(true);
+      await createBorrowRequest(contactId, parseFloat(borrowAmount), borrowDueDate, borrowNote || undefined);
+      closeBorrow();
+      await load();
+    } catch (e: any) {
+      const msg = e?.response?.data?.message ?? e?.message ?? 'Failed to send borrow request.';
+      Alert.alert('Error', msg);
+    } finally {
+      setBorrowSubmitting(false);
+    }
+  };
+
+  // Stats
+  const activeLends = lends.filter((l) => ['ACCEPTED', 'ACTIVE', 'PARTIALLY_PAID'].includes(l.status));
+  const overdueLends = lends.filter((l) => l.status === 'OVERDUE');
+  const paidLends = lends.filter((l) => l.status === 'PAID');
 
   return (
     <SafeAreaView style={styles.container}>
@@ -30,77 +135,287 @@ export default function ContactDetailsScreen() {
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Profile Header */}
-        <View style={styles.profileHeader}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials(contact.name)}</Text>
-          </View>
-          <Text style={styles.name}>{contact.name}</Text>
-          <Text style={styles.phone}>{contact.phone}</Text>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={Colors.primary} />
         </View>
-
-        <View style={styles.px}>
-          {/* Trust Score Card */}
-          <CardContainer style={styles.trustCard}>
-            <Text style={styles.trustCardTitle}>Trust Score</Text>
-            <View style={styles.trustRow}>
-              <TrustBadge score={contact.trustScore} />
-              <Text style={styles.trustScore}>{contact.trustScore}/100</Text>
+      ) : !contact ? (
+        <View style={styles.center}>
+          <Text style={styles.emptyText}>Contact not found.</Text>
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+          {/* Profile Header */}
+          <View style={styles.profileHeader}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{getInitials(contact.name)}</Text>
             </View>
-            <View style={styles.progressWrapper}>
-              <ProgressBar progress={contact.trustScore / 100} />
-            </View>
-            <Text style={styles.trustStats}>
-              On time: {contact.onTimePaid ?? 0}  ·  Late: {contact.latePaid ?? 0}
-            </Text>
-          </CardContainer>
-
-          {/* Stat Row */}
-          <View style={styles.statRow}>
-            <CardContainer style={styles.statCard}>
-              <Text style={styles.statLabel}>Total Lends</Text>
-              <Text style={styles.statValue}>{contact.totalLends ?? 0}</Text>
-            </CardContainer>
-            <CardContainer style={styles.statCard}>
-              <Text style={styles.statLabel}>Paid</Text>
-              <Text style={[styles.statValue, { color: Colors.success }]}>
-                {contact.paidLends ?? 0}
-              </Text>
-            </CardContainer>
-            <CardContainer style={styles.statCard}>
-              <Text style={styles.statLabel}>Overdue</Text>
-              <Text style={[styles.statValue, { color: Colors.danger }]}>
-                {contact.overdueLends ?? 0}
-              </Text>
-            </CardContainer>
+            <Text style={styles.name}>{contact.name}</Text>
+            {contact.email ? <Text style={styles.contactInfo}>{contact.email}</Text> : null}
+            {contact.phone ? <Text style={styles.contactInfo}>{contact.phone}</Text> : null}
+            {contact.linkedUserId ? (
+              <View style={styles.registeredBadge}>
+                <Ionicons name="checkmark-circle" size={13} color={Colors.success} />
+                <Text style={styles.registeredText}>On Salaf</Text>
+              </View>
+            ) : null}
           </View>
 
-          {/* Lend History */}
-          <Text style={styles.sectionTitle}>Lend History</Text>
-          {contactLends.length === 0 ? (
-            <Text style={styles.empty}>No lends with this contact.</Text>
-          ) : (
-            contactLends.map((lend) => (
-              <CardContainer key={lend.id} style={styles.lendHistoryCard}>
-                <View style={styles.lendHistoryRow}>
-                  <View>
-                    <Text style={styles.lendAmount}>{formatCurrency(lend.amount)}</Text>
-                    <Text style={styles.lendDate}>{formatDate(lend.due)}</Text>
-                  </View>
-                  <StatusBadge status={lend.status} />
-                </View>
+          <View style={styles.px}>
+            {/* Stat Row */}
+            <View style={styles.statRow}>
+              <CardContainer style={styles.statCard}>
+                <Text style={styles.statLabel}>Active</Text>
+                <Text style={[styles.statValue, { color: Colors.primary }]}>{activeLends.length}</Text>
               </CardContainer>
-            ))
-          )}
+              <CardContainer style={styles.statCard}>
+                <Text style={styles.statLabel}>Paid</Text>
+                <Text style={[styles.statValue, { color: Colors.success }]}>{paidLends.length}</Text>
+              </CardContainer>
+              <CardContainer style={styles.statCard}>
+                <Text style={styles.statLabel}>Overdue</Text>
+                <Text style={[styles.statValue, { color: Colors.danger }]}>{overdueLends.length}</Text>
+              </CardContainer>
+            </View>
 
-          <View style={styles.spacer} />
-          <PrimaryButton
-            title={`+ New Lend to ${contact.name.split(' ')[0]}`}
-            onPress={() => router.push('/create-lend')}
-          />
+            {/* Lend History */}
+            <Text style={styles.sectionTitle}>Lend History</Text>
+            {lends.length === 0 ? (
+              <Text style={styles.emptyText}>No lends with this contact.</Text>
+            ) : (
+              lends.map((lend) => (
+                <TouchableOpacity
+                  key={lend.id}
+                  onPress={() => router.push(`/lend-details?id=${lend.id}`)}
+                  activeOpacity={0.85}
+                >
+                  <CardContainer style={styles.lendCard}>
+                    <View style={styles.lendRow}>
+                      <View style={styles.lendIconWrap}>
+                        <Ionicons name="arrow-up-outline" size={18} color={Colors.textPrimary} />
+                      </View>
+                      <View style={styles.lendInfo}>
+                        <Text style={styles.lendAmount}>{formatCurrency(lend.amount)}</Text>
+                        <Text style={styles.lendDate}>Due {formatDate(lend.due)}</Text>
+                      </View>
+                      <StatusBadge status={lend.status} />
+                    </View>
+                    {lend.remainingBalance < lend.amount && (
+                      <Text style={styles.lendPaid}>
+                        Paid: {formatCurrency(lend.paid)} · Remaining: {formatCurrency(lend.remainingBalance)}
+                      </Text>
+                    )}
+                  </CardContainer>
+                </TouchableOpacity>
+              ))
+            )}
+
+            <View style={styles.spacer} />
+
+            {!contact.linkedUserId && (
+              <View style={styles.notRegisteredBanner}>
+                <Ionicons name="information-circle-outline" size={16} color={Colors.textSecondary} />
+                <Text style={styles.notRegisteredText}>
+                  This contact is not registered on Salaf. Lend/Borrow is unavailable.
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.lendBtn, !contact.linkedUserId && styles.actionBtnDisabled]}
+                onPress={() => {
+                  if (!contact.linkedUserId) {
+                    Alert.alert('Not Registered', 'This contact must be a registered Salaf user to create a lend.');
+                    return;
+                  }
+                  setLendVisible(true);
+                }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="arrow-up-outline" size={18} color="#fff" />
+                <Text style={styles.actionBtnText}>Lend</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.borrowBtn, !contact.linkedUserId && styles.borrowBtnDisabled]}
+                onPress={() => {
+                  if (!contact.linkedUserId) {
+                    Alert.alert('Not Registered', 'This contact must be a registered Salaf user to request a borrow.');
+                    return;
+                  }
+                  setBorrowVisible(true);
+                }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="arrow-down-outline" size={18} color={contact.linkedUserId ? Colors.primary : Colors.textSecondary} />
+                <Text style={[styles.actionBtnText, { color: contact.linkedUserId ? Colors.primary : Colors.textSecondary }]}>Borrow</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      )}
+
+      {/* ── Borrow Modal ───────────────────────────────────────────────────── */}
+      <Modal visible={borrowVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { maxHeight: '85%', paddingBottom: 0 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Request to Borrow</Text>
+              <TouchableOpacity onPress={closeBorrow}>
+                <Ionicons name="close" size={22} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
+              {/* Contact (pre-selected, display only) */}
+              <View style={styles.contactDisplay}>
+                <View style={styles.miniAvatar}>
+                  <Text style={styles.miniAvatarText}>{getInitials(contact?.name ?? '')}</Text>
+                </View>
+                <Text style={styles.contactDisplayName}>{contact?.name}</Text>
+              </View>
+
+              {/* Amount */}
+              <View style={[styles.amountRow, borrowErrors.amount && styles.errorBorder]}>
+                <Text style={styles.amountPrefix}>BD</Text>
+                <TextInput
+                  style={styles.amountInput}
+                  placeholder="0.000"
+                  placeholderTextColor={Colors.textSecondary}
+                  value={borrowAmount}
+                  onChangeText={setBorrowAmount}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              {borrowErrors.amount && <Text style={styles.formError}>{borrowErrors.amount}</Text>}
+
+              {/* Due Date */}
+              <DatePickerField
+                value={borrowDueDate}
+                onChange={setBorrowDueDate}
+                placeholder="Select due date"
+                error={!!borrowErrors.dueDate}
+              />
+              {borrowErrors.dueDate && <Text style={styles.formError}>{borrowErrors.dueDate}</Text>}
+
+              {/* Note */}
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Note (optional)"
+                placeholderTextColor={Colors.textSecondary}
+                value={borrowNote}
+                onChangeText={setBorrowNote}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+
+              {/* Agreement */}
+              <TouchableOpacity style={styles.agreementRow} onPress={() => setBorrowAgreed(!borrowAgreed)} activeOpacity={0.8}>
+                <View style={[styles.checkbox, borrowAgreed && styles.checkboxChecked]}>
+                  {borrowAgreed && <Ionicons name="checkmark" size={14} color="#fff" />}
+                </View>
+                <Text style={styles.agreementText}>
+                  I confirm I am requesting to borrow{contact ? ` from ${contact.name}` : ''} and understand this is a formal record
+                </Text>
+              </TouchableOpacity>
+              {borrowErrors.agreed && <Text style={styles.formError}>{borrowErrors.agreed}</Text>}
+
+              <TouchableOpacity
+                style={[styles.sendBtn, { marginTop: 16 }, borrowSubmitting && { opacity: 0.6 }]}
+                onPress={handleSubmitBorrow}
+                disabled={borrowSubmitting}
+              >
+                <Text style={styles.sendBtnText}>{borrowSubmitting ? 'Submitting...' : 'Send Borrow Request'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cancelBtn} onPress={closeBorrow}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
         </View>
-      </ScrollView>
+      </Modal>
+
+      {/* ── Lend Modal ─────────────────────────────────────────────────────── */}
+      <Modal visible={lendVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { maxHeight: '85%', paddingBottom: 0 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Create Lend</Text>
+              <TouchableOpacity onPress={closeLend}>
+                <Ionicons name="close" size={22} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
+              {/* Contact (pre-selected, display only) */}
+              <View style={styles.contactDisplay}>
+                <View style={styles.miniAvatar}>
+                  <Text style={styles.miniAvatarText}>{getInitials(contact?.name ?? '')}</Text>
+                </View>
+                <Text style={styles.contactDisplayName}>{contact?.name}</Text>
+              </View>
+
+              {/* Amount */}
+              <View style={[styles.amountRow, lendErrors.amount && styles.errorBorder]}>
+                <Text style={styles.amountPrefix}>BD</Text>
+                <TextInput
+                  style={styles.amountInput}
+                  placeholder="0.000"
+                  placeholderTextColor={Colors.textSecondary}
+                  value={lendAmount}
+                  onChangeText={setLendAmount}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              {lendErrors.amount && <Text style={styles.formError}>{lendErrors.amount}</Text>}
+
+              {/* Due Date */}
+              <DatePickerField
+                value={lendDueDate}
+                onChange={setLendDueDate}
+                placeholder="Select due date"
+                error={!!lendErrors.dueDate}
+              />
+              {lendErrors.dueDate && <Text style={styles.formError}>{lendErrors.dueDate}</Text>}
+
+              {/* Note */}
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Note (optional)"
+                placeholderTextColor={Colors.textSecondary}
+                value={lendNote}
+                onChangeText={setLendNote}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+
+              {/* Agreement */}
+              <TouchableOpacity style={styles.agreementRow} onPress={() => setLendAgreed(!lendAgreed)} activeOpacity={0.8}>
+                <View style={[styles.checkbox, lendAgreed && styles.checkboxChecked]}>
+                  {lendAgreed && <Ionicons name="checkmark" size={14} color="#fff" />}
+                </View>
+                <Text style={styles.agreementText}>
+                  I confirm I am lending{contact ? ` to ${contact.name}` : ''} and understand this is a formal record
+                </Text>
+              </TouchableOpacity>
+              {lendErrors.agreed && <Text style={styles.formError}>{lendErrors.agreed}</Text>}
+
+              <TouchableOpacity
+                style={[styles.sendBtn, { marginTop: 16 }, lendSubmitting && { opacity: 0.6 }]}
+                onPress={handleSubmitLend}
+                disabled={lendSubmitting}
+              >
+                <Text style={styles.sendBtnText}>{lendSubmitting ? 'Submitting...' : 'Submit Lend'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cancelBtn} onPress={closeLend}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -108,74 +423,116 @@ export default function ContactDetailsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingVertical: 12,
   },
   backBtn: { padding: 4, marginRight: 8 },
   headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    textAlign: 'center',
+    flex: 1, fontSize: 18, fontWeight: '600',
+    color: Colors.textPrimary, textAlign: 'center',
   },
   headerRight: { width: 32 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { paddingBottom: 40 },
-  profileHeader: { alignItems: 'center', paddingVertical: 24 },
+  profileHeader: { alignItems: 'center', paddingVertical: 28 },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: '#EFEFEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
+    width: 80, height: 80, borderRadius: 20,
+    backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  avatarText: { fontSize: 28, fontWeight: '700', color: '#121212' },
+  avatarText: { fontSize: 28, fontWeight: '700', color: Colors.primaryDark },
   name: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 },
-  phone: { fontSize: 14, color: Colors.textSecondary },
+  contactInfo: { fontSize: 14, color: Colors.textSecondary, marginTop: 2 },
+  registeredBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Colors.successLight, borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 3, marginTop: 8,
+  },
+  registeredText: { fontSize: 12, fontWeight: '600', color: Colors.success },
   px: { paddingHorizontal: 20 },
-  trustCard: { marginBottom: 16 },
-  trustCardTitle: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-    marginBottom: 10,
-  },
-  trustRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  trustScore: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  progressWrapper: { marginBottom: 10 },
-  trustStats: { fontSize: 12, color: Colors.textSecondary },
-  statRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  statRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
   statCard: { flex: 1, alignItems: 'center', padding: 12 },
   statLabel: { fontSize: 11, color: Colors.textSecondary, marginBottom: 4, textAlign: 'center' },
-  statValue: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    marginBottom: 12,
+  statValue: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary, marginBottom: 12 },
+  lendCard: { marginBottom: 10 },
+  lendRow: { flexDirection: 'row', alignItems: 'center' },
+  lendIconWrap: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: '#EFEFEF', alignItems: 'center', justifyContent: 'center', marginRight: 10,
   },
-  lendHistoryCard: { marginBottom: 10 },
-  lendHistoryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+  lendInfo: { flex: 1 },
   lendAmount: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  lendDate: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  empty: {
-    textAlign: 'center',
-    color: Colors.textSecondary,
-    fontSize: 14,
-    paddingVertical: 20,
-  },
+  lendDate: { fontSize: 12, color: Colors.textSecondary, marginTop: 1 },
+  lendPaid: { fontSize: 11, color: Colors.textSecondary, marginTop: 6 },
+  emptyText: { textAlign: 'center', color: Colors.textSecondary, fontSize: 14, paddingVertical: 20 },
   spacer: { height: 20 },
+  actionRow: { flexDirection: 'row', gap: 12 },
+  actionBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 52, borderRadius: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.10, shadowRadius: 8, elevation: 3,
+  },
+  lendBtn: { backgroundColor: Colors.primary },
+  actionBtnDisabled: { backgroundColor: Colors.border },
+  borrowBtn: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: Colors.primary },
+  borrowBtnDisabled: { borderColor: Colors.border },
+  actionBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  notRegisteredBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.card, borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: Colors.border, marginBottom: 4,
+  },
+  notRegisteredText: { flex: 1, fontSize: 12, color: Colors.textSecondary, lineHeight: 17 },
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: Colors.card,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, gap: 12,
+  },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
+  contactDisplay: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 12, marginBottom: 4,
+  },
+  miniAvatar: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
+  },
+  miniAvatarText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  contactDisplayName: { fontSize: 15, fontWeight: '600', color: Colors.primaryDark },
+  amountRow: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderColor: Colors.border, borderRadius: 12,
+    paddingHorizontal: 14, height: 52, backgroundColor: Colors.background,
+  },
+  amountPrefix: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary, marginRight: 8 },
+  amountInput: { flex: 1, fontSize: 16, color: Colors.textPrimary },
+  noteInput: {
+    borderWidth: 1, borderColor: Colors.border, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 14,
+    color: Colors.textPrimary, backgroundColor: Colors.background,
+    minHeight: 80,
+  },
+  agreementRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 6, borderWidth: 2,
+    borderColor: Colors.border, alignItems: 'center', justifyContent: 'center', marginTop: 1,
+  },
+  checkboxChecked: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  agreementText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
+  formError: { fontSize: 12, color: Colors.danger, marginTop: 2, marginBottom: 4 },
+  errorBorder: { borderColor: Colors.danger },
+  sendBtn: {
+    height: 52, borderRadius: 14, backgroundColor: Colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  sendBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  cancelBtn: {
+    height: 48, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center', marginTop: 4,
+  },
+  cancelBtnText: { color: Colors.textSecondary, fontWeight: '600', fontSize: 15 },
 });
