@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+
 @Entity
 @Table(name = "notifications")
 @Data
@@ -26,6 +27,9 @@ public class Notification {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "receiver_id", nullable = false)
     private User receiver;
+
+    @Enumerated(EnumType.STRING)
+    private NotificationType type = NotificationType.REMINDER;
 
     private String note;
 

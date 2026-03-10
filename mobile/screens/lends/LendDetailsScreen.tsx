@@ -57,7 +57,7 @@ export default function LendDetailsScreen() {
 
   const progress = lend.amount > 0 ? lend.paid / lend.amount : 0;
   const timelineEvents = [
-    { label: 'Lend Created', date: formatDate(lend.createdAt), color: Colors.primary },
+    { label: isBorrowerView ? 'Borrow Received' : 'Lend Created', date: formatDate(lend.createdAt), color: Colors.primary },
     { label: 'Due Date', date: formatDate(lend.due), color: Colors.danger },
   ];
 
@@ -67,10 +67,8 @@ export default function LendDetailsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Lend Details</Text>
-        <TouchableOpacity style={styles.menuBtn}>
-          <Ionicons name="ellipsis-vertical" size={22} color={Colors.textPrimary} />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{isBorrowerView ? 'Borrow Details' : 'Lend Details'}</Text>
+        <View style={styles.menuBtn} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -81,12 +79,22 @@ export default function LendDetailsScreen() {
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>{getInitials(lend.contact)}</Text>
                 </View>
-                <Text style={styles.contactName}>{lend.contact}</Text>
+                <View>
+                  <Text style={styles.contactName}>{lend.contact}</Text>
+                  <Text style={styles.contactRole}>{isBorrowerView ? 'Lender' : 'Borrower'}</Text>
+                </View>
               </View>
-              <StatusBadge status={lend.status} />
+              <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                <View style={[styles.rolePill, isBorrowerView ? styles.rolePillBorrow : styles.rolePillLend]}>
+                  <Text style={[styles.rolePillText, isBorrowerView ? styles.rolePillTextBorrow : styles.rolePillTextLend]}>
+                    {isBorrowerView ? 'You Borrowed' : 'You Lent'}
+                  </Text>
+                </View>
+                <StatusBadge status={lend.status} />
+              </View>
             </View>
             <Text style={styles.remainingAmount}>{formatCurrency(lend.remainingBalance)}</Text>
-            <Text style={styles.remainingLabel}>Remaining</Text>
+            <Text style={styles.remainingLabel}>{isBorrowerView ? 'You owe' : 'Remaining'}</Text>
             <View style={styles.progressWrapper}>
               <ProgressBar progress={progress} />
             </View>
@@ -259,6 +267,13 @@ const styles = StyleSheet.create({
   noteCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   noteIcon: { marginTop: 1 },
   noteText: { flex: 1, fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
+  contactRole: { fontSize: 11, color: Colors.textSecondary, marginTop: 2, fontWeight: '500' },
+  rolePill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  rolePillLend: { backgroundColor: Colors.primaryLight },
+  rolePillBorrow: { backgroundColor: Colors.warningLight },
+  rolePillText: { fontSize: 11, fontWeight: '700' },
+  rolePillTextLend: { color: Colors.primaryDark },
+  rolePillTextBorrow: { color: Colors.warning },
   noRepayments: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', paddingVertical: 16 },
   repayCard: { marginBottom: 10 },
   repayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

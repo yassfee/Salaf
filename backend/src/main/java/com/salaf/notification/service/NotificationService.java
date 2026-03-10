@@ -5,6 +5,7 @@ import com.salaf.lend.entity.LendRequest;
 import com.salaf.lend.repository.LendRequestRepository;
 import com.salaf.notification.dto.NotificationResponse;
 import com.salaf.notification.entity.Notification;
+import com.salaf.notification.entity.NotificationType;
 import com.salaf.notification.repository.NotificationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +38,7 @@ public class NotificationService {
         notification.setLendRequest(lend);
         notification.setSender(sender);
         notification.setReceiver(lend.getBorrower().getLinkedUser());
+        notification.setType(NotificationType.REMINDER);
         notification.setNote(note);
         notificationRepository.save(notification);
 

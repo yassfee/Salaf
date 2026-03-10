@@ -10,13 +10,14 @@ import { Colors } from '../../constants/colors';
 import {
   getDashboardSummary, getDueSoon, getCurrentUser, getLends,
   DashboardSummary, DueSoonLend, LendResponse, NotificationItem,
-  sendNotification, getNotifications, markAllNotificationsRead, getUnreadNotificationCount,
+  sendNotification, getNotifications, markNotificationRead, markAllNotificationsRead, getUnreadNotificationCount,
   getContacts, ContactResponse, createLend, createBorrowRequest,
   getIncomingLends, acceptLend, rejectLend, getBorrowRequests, approveBorrowRequest, declineBorrowRequest,
   WalletResponse, getWallet, saveWalletCard, updateWalletBalance,
 } from '../../services/api';
 import LendCard from '../../components/cards/LendCard';
 import StatusBadge from '../../components/ui/StatusBadge';
+import DatePickerField from '../../components/ui/DatePickerField';
 import { formatCurrency, getGreeting, getInitials, formatDate } from '../../utils/formatCurrency';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -38,7 +39,7 @@ export default function HomeScreen() {
   // Toast
   const toastAnim = useRef(new Animated.Value(0)).current;
   const [toastVisible, setToastVisible] = useState(false);
-  const [toastType, setToastType] = useState<'1' | '2'>('1');
+  const [toastType, setToastType] = useState<'1' | '2' | '3'>('1');
 
   // Notify modal
   const [notifyVisible, setNotifyVisible] = useState(false);
@@ -99,7 +100,7 @@ export default function HomeScreen() {
   const [requestsAgreed, setRequestsAgreed] = useState<Record<number, boolean>>({});
 
   // ── Toast ────────────────────────────────────────────────────────────────────
-  const showToast = useCallback((type: '1' | '2' = '1') => {
+  const showToast = useCallback((type: '1' | '2' | '3' = '1') => {
     setToastType(type);
     setToastVisible(true);
     Animated.sequence([
@@ -209,10 +210,6 @@ export default function HomeScreen() {
     if (!lendContact) errs.contact = 'Please select a contact';
     if (!lendAmount || parseFloat(lendAmount) <= 0) errs.amount = 'Amount must be greater than 0';
     if (!lendDueDate) errs.dueDate = 'Due date is required';
-    else {
-      const due = new Date(lendDueDate);
-      if (isNaN(due.getTime()) || due <= new Date()) errs.dueDate = 'Must be a future date (YYYY-MM-DD)';
-    }
     if (!lendAgreed) errs.agreed = 'You must confirm the lending agreement';
     setLendErrors(errs);
     return Object.keys(errs).length === 0;
@@ -248,10 +245,6 @@ export default function HomeScreen() {
     if (!borrowContact) errs.contact = 'Please select who you want to borrow from';
     if (!borrowAmount || parseFloat(borrowAmount) <= 0) errs.amount = 'Amount must be greater than 0';
     if (!borrowDueDate) errs.dueDate = 'Due date is required';
-    else {
-      const due = new Date(borrowDueDate);
-      if (isNaN(due.getTime()) || due <= new Date()) errs.dueDate = 'Must be a future date (YYYY-MM-DD)';
-    }
     if (!borrowAgreed) errs.agreed = 'You must confirm the borrowing agreement';
     setBorrowErrors(errs);
     return Object.keys(errs).length === 0;
@@ -376,6 +369,7 @@ export default function HomeScreen() {
       ]);
       setWallet({ ...updatedCard, balance: updatedBalance.balance });
       setWalletModalVisible(false);
+      showToast('3');
     } catch (e: any) {
       Alert.alert('Error', e?.message ?? 'Failed to save wallet.');
     } finally {
@@ -421,9 +415,9 @@ export default function HomeScreen() {
             </View>
             <TouchableOpacity style={styles.bellBtn} onPress={handleOpenBell}>
               <Ionicons name="notifications-outline" size={22} color="#121212" />
-              {unreadCount > 0 && (
+              {notifications.length > 0 && (
                 <View style={styles.bellBadge}>
-                  <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                  <Text style={styles.bellBadgeText}>{notifications.length > 9 ? '9+' : notifications.length}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -454,7 +448,7 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.totalChip} activeOpacity={0.8} onPress={() => setBalanceVisible(!balanceVisible)}>
             <Ionicons name={balanceVisible ? 'eye-off-outline' : 'eye-outline'} size={13} color="#121212" />
             <Text style={styles.totalChipText}>
-              {balanceVisible ? `BD ${wallet?.balance?.toFixed(3) ?? '0.000'}` : 'Show Balance'}
+              {balanceVisible ? `BD ${Number(wallet?.balance ?? 0).toFixed(3)}` : 'Show Balance'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -509,25 +503,6 @@ export default function HomeScreen() {
               )}
             </View>
 
-            {/* Overview */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Overview</Text>
-              </View>
-            </View>
-            <View style={styles.summaryGrid}>
-              {summaryCards.map((card) => (
-                <View key={card.label} style={[styles.summaryCard, { width: cardW }]}>
-                  <View style={styles.summaryTop}>
-                    <Text style={styles.summaryLabel}>{card.label}</Text>
-                    <Ionicons name={card.icon as any} size={18} color={Colors.primary} />
-                  </View>
-                  <Text style={[styles.summaryAmount, card.label === 'Overdue' && styles.redText]}>
-                    {formatCurrency(card.amount)}
-                  </Text>
-                </View>
-              ))}
-            </View>
           </>
         )}
       </ScrollView>
@@ -539,8 +514,12 @@ export default function HomeScreen() {
             <Ionicons name="checkmark-circle" size={22} color={Colors.success} />
           </View>
           <View style={styles.toastTextWrap}>
-            <Text style={styles.toastTitle}>{toastType === '2' ? 'Borrow request sent!' : 'Lend request sent!'}</Text>
-            <Text style={styles.toastSub}>{toastType === '2' ? 'Waiting for the lender to approve.' : 'Waiting for the borrower to accept.'}</Text>
+            <Text style={styles.toastTitle}>
+              {toastType === '3' ? 'Wallet saved!' : toastType === '2' ? 'Borrow request sent!' : 'Lend request sent!'}
+            </Text>
+            <Text style={styles.toastSub}>
+              {toastType === '3' ? 'Your card and balance have been updated.' : toastType === '2' ? 'Waiting for the lender to approve.' : 'Waiting for the borrower to accept.'}
+            </Text>
           </View>
         </Animated.View>
       )}
@@ -632,32 +611,55 @@ export default function HomeScreen() {
             {notifLoading ? (
               <ActivityIndicator color={Colors.primary} style={{ marginVertical: 24 }} />
             ) : notifications.length === 0 ? (
-              <Text style={styles.emptyNotif}>No notifications yet.</Text>
+              <Text style={styles.emptyNotif}>No new notifications.</Text>
             ) : (
               <ScrollView showsVerticalScrollIndicator={false}>
                 {notifications.slice(0, 5).map((n) => (
-                  <TouchableOpacity
-                    key={n.id}
-                    style={[styles.notifCard, !n.read && styles.notifCardUnread]}
-                    activeOpacity={0.8}
-                    onPress={() => { setBellVisible(false); router.push(`/lend-details?id=${n.lendId}&incoming=true`); }}
-                  >
-                    <View style={styles.notifIconWrap}>
-                      <Ionicons name="notifications" size={18} color={Colors.primary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.notifTitle}>
-                        Reminder from <Text style={{ fontWeight: '700' }}>{n.senderName}</Text>
-                      </Text>
-                      <Text style={styles.notifSub}>
-                        Paid <Text style={{ color: Colors.success, fontWeight: '600' }}>{formatCurrency(n.amountPaid)}</Text>
-                        {' · '}Remaining <Text style={{ color: Colors.danger, fontWeight: '600' }}>{formatCurrency(n.remainingBalance)}</Text>
-                      </Text>
-                      {n.note ? <Text style={styles.notifNote}>"{n.note}"</Text> : null}
-                      <Text style={styles.notifTime}>{formatDate(n.createdAt)}</Text>
-                    </View>
-                    {!n.read && <View style={styles.unreadDot} />}
-                  </TouchableOpacity>
+                  <View key={n.id} style={[styles.notifCard, !n.read && styles.notifCardUnread]}>
+                    <TouchableOpacity
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        setBellVisible(false);
+                        if (n.type === 'BORROW_REQUEST') {
+                          router.push(`/lend-details?id=${n.lendId}`);
+                        } else {
+                          router.push(`/lend-details?id=${n.lendId}&incoming=true`);
+                        }
+                      }}
+                    >
+                      <View style={styles.notifIconWrap}>
+                        <Ionicons name="notifications" size={18} color={Colors.primary} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.notifTitle}>
+                          {n.type === 'LEND_REQUEST'
+                            ? <><Text style={{ fontWeight: '700' }}>{n.senderName}</Text> sent you a lend request</>
+                            : n.type === 'BORROW_REQUEST'
+                            ? <><Text style={{ fontWeight: '700' }}>{n.senderName}</Text> wants to borrow from you</>
+                            : <>Reminder from <Text style={{ fontWeight: '700' }}>{n.senderName}</Text></>}
+                        </Text>
+                        <Text style={styles.notifSub}>
+                          {n.type === 'REMINDER'
+                            ? <>Paid <Text style={{ color: Colors.success, fontWeight: '600' }}>{formatCurrency(n.amountPaid)}</Text>{' · '}Remaining <Text style={{ color: Colors.danger, fontWeight: '600' }}>{formatCurrency(n.remainingBalance)}</Text></>
+                            : <Text style={{ color: Colors.primary, fontWeight: '600' }}>{formatCurrency(n.amount)}</Text>}
+                        </Text>
+                        {n.note ? <Text style={styles.notifNote}>"{n.note}"</Text> : null}
+                        <Text style={styles.notifTime}>{formatDate(n.createdAt)}</Text>
+                      </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.notifDismissBtn}
+                      onPress={async () => {
+                        try {
+                          await markNotificationRead(n.id);
+                          setNotifications((prev) => prev.filter((x) => x.id !== n.id));
+                        } catch { /* ignore */ }
+                      }}
+                    >
+                      <Ionicons name="checkmark" size={14} color={Colors.primary} />
+                    </TouchableOpacity>
+                  </View>
                 ))}
               </ScrollView>
             )}
@@ -741,16 +743,12 @@ export default function HomeScreen() {
               {lendErrors.amount && <Text style={styles.formError}>{lendErrors.amount}</Text>}
 
               {/* Due Date */}
-              <View style={[styles.dateRow, lendErrors.dueDate && styles.errorBorder]}>
-                <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} style={{ marginRight: 8 }} />
-                <TextInput
-                  style={styles.dateInput}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={Colors.textSecondary}
-                  value={lendDueDate}
-                  onChangeText={setLendDueDate}
-                />
-              </View>
+              <DatePickerField
+                value={lendDueDate}
+                onChange={setLendDueDate}
+                placeholder="Select due date"
+                error={!!lendErrors.dueDate}
+              />
               {lendErrors.dueDate && <Text style={styles.formError}>{lendErrors.dueDate}</Text>}
 
               {/* Note */}
@@ -865,16 +863,12 @@ export default function HomeScreen() {
               {borrowErrors.amount && <Text style={styles.formError}>{borrowErrors.amount}</Text>}
 
               {/* Due Date */}
-              <View style={[styles.dateRow, borrowErrors.dueDate && styles.errorBorder]}>
-                <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} style={{ marginRight: 8 }} />
-                <TextInput
-                  style={styles.dateInput}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={Colors.textSecondary}
-                  value={borrowDueDate}
-                  onChangeText={setBorrowDueDate}
-                />
-              </View>
+              <DatePickerField
+                value={borrowDueDate}
+                onChange={setBorrowDueDate}
+                placeholder="Select due date"
+                error={!!borrowErrors.dueDate}
+              />
               {borrowErrors.dueDate && <Text style={styles.formError}>{borrowErrors.dueDate}</Text>}
 
               {/* Note */}
@@ -1243,6 +1237,7 @@ const styles = StyleSheet.create({
   notifNote: { fontSize: 12, color: Colors.textPrimary, fontStyle: 'italic', marginTop: 4 },
   notifTime: { fontSize: 11, color: Colors.textSecondary, marginTop: 4 },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary, marginTop: 6 },
+  notifDismissBtn: { width: 28, height: 28, borderRadius: 8, borderWidth: 1.5, borderColor: Colors.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 8, alignSelf: 'center' },
   viewAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 14, marginTop: 4, borderTopWidth: 1, borderTopColor: Colors.border },
   viewAllText: { fontSize: 14, fontWeight: '600', color: Colors.primary },
   // Requests modal

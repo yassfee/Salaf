@@ -11,6 +11,7 @@ import { getContacts, createBorrowRequest, ContactResponse } from '../../service
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import InputField from '../../components/ui/InputField';
 import CardContainer from '../../components/ui/CardContainer';
+import DatePickerField from '../../components/ui/DatePickerField';
 import { getInitials } from '../../utils/formatCurrency';
 
 export default function CreateBorrowRequestScreen() {
@@ -40,10 +41,6 @@ export default function CreateBorrowRequestScreen() {
     if (!selectedContact) errs.contact = 'Please select who you want to borrow from';
     if (!amount || parseFloat(amount) <= 0) errs.amount = 'Amount must be greater than 0';
     if (!dueDate) errs.dueDate = 'Due date is required';
-    else {
-      const due = new Date(dueDate);
-      if (isNaN(due.getTime()) || due <= new Date()) errs.dueDate = 'Due date must be in the future (YYYY-MM-DD)';
-    }
     if (!agreed) errs.agreed = 'You must confirm the borrowing agreement';
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -136,13 +133,13 @@ export default function CreateBorrowRequestScreen() {
           />
 
           {/* Due Date */}
-          <InputField
-            placeholder="YYYY-MM-DD"
-            icon="calendar-outline"
+          <DatePickerField
             value={dueDate}
-            onChangeText={setDueDate}
-            error={errors.dueDate}
+            onChange={setDueDate}
+            placeholder="Select due date"
+            error={!!errors.dueDate}
           />
+          {errors.dueDate ? <Text style={styles.errorText}>{errors.dueDate}</Text> : null}
 
           {/* Note */}
           <View style={styles.textareaWrapper}>

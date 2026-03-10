@@ -4,6 +4,7 @@ import com.salaf.auth.entity.User;
 import com.salaf.lend.entity.LendRequest;
 import com.salaf.lend.entity.LendStatus;
 import com.salaf.lend.repository.LendRequestRepository;
+import com.salaf.repayment.dto.MyRepaymentResponse;
 import com.salaf.repayment.dto.RepaymentRequest;
 import com.salaf.repayment.dto.RepaymentResponse;
 import com.salaf.repayment.entity.Repayment;
@@ -84,6 +85,13 @@ public class RepaymentService {
         return repaymentRepository.findByLendRequestIdOrderByPaidAtDesc(lendId)
                 .stream()
                 .map(RepaymentResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    public List<MyRepaymentResponse> getMyRepayments(User currentUser) {
+        return repaymentRepository.findByLendRequest_Borrower_LinkedUserOrderByPaidAtDesc(currentUser)
+                .stream()
+                .map(MyRepaymentResponse::from)
                 .collect(Collectors.toList());
     }
 

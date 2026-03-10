@@ -1,6 +1,7 @@
 package com.salaf.repayment.controller;
 
 import com.salaf.auth.entity.User;
+import com.salaf.repayment.dto.MyRepaymentResponse;
 import com.salaf.repayment.dto.RepaymentRequest;
 import com.salaf.repayment.dto.RepaymentResponse;
 import com.salaf.repayment.service.RepaymentService;
@@ -14,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/lends")
 public class RepaymentController {
     private final RepaymentService repaymentService;
 
@@ -22,7 +22,12 @@ public class RepaymentController {
         this.repaymentService = repaymentService;
     }
 
-    @PostMapping("/{lendId}/repayments")
+    @GetMapping("/api/repayments/mine")
+    public ResponseEntity<List<MyRepaymentResponse>> getMyRepayments(@AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(repaymentService.getMyRepayments(currentUser));
+    }
+
+    @PostMapping("/api/lends/{lendId}/repayments")
     public ResponseEntity<Map<String, Object>> recordRepayment(
             @PathVariable Long lendId,
             @Valid @RequestBody RepaymentRequest request,
@@ -31,19 +36,17 @@ public class RepaymentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @GetMapping("/{lendId}/repayments")
+    @GetMapping("/api/lends/{lendId}/repayments")
     public ResponseEntity<List<RepaymentResponse>> getRepaymentHistory(
             @PathVariable Long lendId,
             @AuthenticationPrincipal User currentUser) {
-        List<RepaymentResponse> history = repaymentService.getRepaymentHistory(lendId, currentUser);
-        return ResponseEntity.ok(history);
+        return ResponseEntity.ok(repaymentService.getRepaymentHistory(lendId, currentUser));
     }
 
-    @GetMapping("/{lendId}/repayments/summary")
+    @GetMapping("/api/lends/{lendId}/repayments/summary")
     public ResponseEntity<Map<String, Object>> getRepaymentSummary(
             @PathVariable Long lendId,
             @AuthenticationPrincipal User currentUser) {
-        Map<String, Object> summary = repaymentService.getRepaymentSummary(lendId, currentUser);
-        return ResponseEntity.ok(summary);
+        return ResponseEntity.ok(repaymentService.getRepaymentSummary(lendId, currentUser));
     }
 }

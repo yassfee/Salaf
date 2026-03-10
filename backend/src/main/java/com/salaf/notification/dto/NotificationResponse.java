@@ -13,9 +13,18 @@ public record NotificationResponse(
         BigDecimal amountPaid,
         BigDecimal remainingBalance,
         String note,
+        String type,
         boolean read,
         LocalDateTime createdAt
 ) {
+    private static String resolveType(Notification n) {
+        if (n.getType() != null) return n.getType().name();
+        String note = n.getNote() != null ? n.getNote().toLowerCase() : "";
+        if (note.contains("lend request")) return "LEND_REQUEST";
+        if (note.contains("borrow request")) return "BORROW_REQUEST";
+        return "REMINDER";
+    }
+
     public static NotificationResponse from(Notification n) {
         BigDecimal total = n.getLendRequest().getAmount();
         BigDecimal remaining = n.getLendRequest().getRemainingBalance();
@@ -29,6 +38,7 @@ public record NotificationResponse(
                 paid,
                 remaining,
                 n.getNote(),
+                resolveType(n),
                 n.isRead(),
                 n.getCreatedAt()
         );

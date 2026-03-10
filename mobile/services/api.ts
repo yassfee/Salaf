@@ -256,6 +256,7 @@ export interface NotificationItem {
   amountPaid: number;
   remainingBalance: number;
   note?: string;
+  type: 'LEND_REQUEST' | 'BORROW_REQUEST' | 'REMINDER';
   read: boolean;
   createdAt: string;
 }
@@ -324,6 +325,21 @@ export async function recordRepayment(
   note?: string,
 ): Promise<{ message: string; amountPaid: number; remainingBalance: number; status: string }> {
   const res = await api.post(`/api/lends/${lendId}/repayments`, { amountPaid, note });
+  return res.data;
+}
+
+export interface MyRepaymentItem {
+  id: number;
+  lendId: number;
+  lenderName: string;
+  totalAmount: number;
+  amountPaid: number;
+  note?: string;
+  paidAt: string;
+}
+
+export async function getMyRepayments(): Promise<MyRepaymentItem[]> {
+  const res = await api.get<MyRepaymentItem[]>('/api/repayments/mine');
   return res.data;
 }
 

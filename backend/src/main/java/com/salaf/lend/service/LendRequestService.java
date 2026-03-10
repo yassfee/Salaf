@@ -10,6 +10,7 @@ import com.salaf.lend.entity.LendRequest;
 import com.salaf.lend.entity.LendStatus;
 import com.salaf.lend.repository.LendRequestRepository;
 import com.salaf.notification.entity.Notification;
+import com.salaf.notification.entity.NotificationType;
 import com.salaf.notification.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -50,6 +51,7 @@ public class LendRequestService {
             n.setLendRequest(saved);
             n.setSender(lender);
             n.setReceiver(borrower.getLinkedUser());
+            n.setType(NotificationType.LEND_REQUEST);
             n.setNote(lender.getName() + " sent you a lend request of " + req.getAmount() + " BD");
             notificationRepository.save(n);
         }
@@ -165,6 +167,7 @@ public class LendRequestService {
         n.setLendRequest(savedBorrow);
         n.setSender(borrower);
         n.setReceiver(lender);
+        n.setType(NotificationType.BORROW_REQUEST);
         n.setNote(borrower.getName() + " sent you a borrow request for " + dto.getAmount() + " BD");
         notificationRepository.save(n);
 
