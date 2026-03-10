@@ -380,4 +380,14 @@ export async function updateWalletBalance(balance: number): Promise<WalletRespon
   return res.data;
 }
 
+// Auth functions
+export async function changePasswordApi(currentPassword: string, newPassword: string): Promise<void> {
+  await api.put('/api/auth/change-password', { currentPassword, newPassword });
+}
+
+export async function deleteAccountApi(): Promise<void> {
+  await api.delete('/api/auth/delete-account');
+  await AsyncStorage.multiRemove(['token', 'user_name', 'user_email']);
+}
+
 export default api;

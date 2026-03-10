@@ -20,4 +20,8 @@ public interface LendRequestRepository extends JpaRepository<LendRequest, Long> 
     List<LendRequest> findByBorrower_LinkedUserAndStatusIn(User linkedUser, List<LendStatus> statuses);
     Optional<LendRequest> findByIdAndBorrower_LinkedUser(Long id, User linkedUser);
     List<LendRequest> findByLenderAndStatusAndDueDateBefore(User lender, LendStatus status, LocalDate date);
+    
+    // For account deletion validation
+    boolean existsByLenderIdAndStatusIn(Long lenderId, List<LendStatus> statuses);
+    boolean existsByBorrower_LinkedUserIdAndStatusIn(Long linkedUserId, List<LendStatus> statuses);
 }
