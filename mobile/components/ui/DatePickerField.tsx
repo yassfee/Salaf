@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform } from 'react-native';
-import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
+
+// Only import native picker on non-web platforms
+let DateTimePicker: any = null;
+if (Platform.OS !== 'web') {
+  DateTimePicker = require('@react-native-community/datetimepicker').default;
+}
 
 interface Props {
   value: string;          // YYYY-MM-DD
@@ -19,55 +24,83 @@ function toLocalISO(d: Date): string {
 }
 
 export default function DatePickerField({ value, onChange, placeholder = 'Select date', error }: Props) {
-  const [iosVisible, setIosVisible] = useState(false);
-  const parsed = value ? new Date(value + 'T00:00:00') : new Date();
+  const [visible, setVisible] = useState(false);
   const minDate = new Date();
   minDate.setDate(minDate.getDate() + 1);
+  const parsed = value ? new Date(value + 'T00:00:00') : minDate;
+  const pickerValue = parsed >= minDate ? parsed : minDate;
 
-  const displayLabel = value || placeholder;
-
-  const open = () => {
-    if (Platform.OS === 'android') {
-      DateTimePickerAndroid.open({
-        value: parsed >= minDate ? parsed : minDate,
-        minimumDate: minDate,
-        mode: 'date',
-        onChange: (_e, date) => { if (date) onChange(toLocalISO(date)); },
-      });
-    } else {
-      setIosVisible(true);
-    }
+  const handleChange = (_e: any, date?: Date) => {
+    if (Platform.OS === 'android') setVisible(false);
+    if (date) onChange(toLocalISO(date));
   };
+
+  // Web fallback: native HTML date input
+  if (Platform.OS === 'web') {
+    return (
+      <View style={[styles.row, error && styles.errorBorder]}>
+        <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} style={{ marginRight: 8 }} />
+        {/* @ts-ignore */}
+        <input
+          type="date"
+          value={value}
+          min={toLocalISO(minDate)}
+          onChange={(e: any) => onChange(e.target.value)}
+          style={{
+            flex: 1,
+            border: 'none',
+            outline: 'none',
+            fontSize: 14,
+            color: value ? Colors.textPrimary : Colors.textSecondary,
+            backgroundColor: 'transparent',
+            fontFamily: 'inherit',
+            cursor: 'pointer',
+          }}
+        />
+      </View>
+    );
+  }
 
   return (
     <>
       <TouchableOpacity
         style={[styles.row, error && styles.errorBorder]}
-        onPress={open}
+        onPress={() => setVisible(true)}
         activeOpacity={0.8}
       >
         <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} style={{ marginRight: 8 }} />
-        <Text style={[styles.label, !value && styles.placeholder]}>{displayLabel}</Text>
+        <Text style={[styles.label, !value && styles.placeholder]}>{value || placeholder}</Text>
         <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} />
       </TouchableOpacity>
 
-      {/* iOS inline picker in modal */}
-      {Platform.OS !== 'android' && (
-        <Modal visible={iosVisible} transparent animationType="slide">
+      {/* Android: render inline when visible */}
+      {visible && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={pickerValue}
+          minimumDate={minDate}
+          mode="date"
+          display="default"
+          onChange={handleChange}
+        />
+      )}
+
+      {/* iOS: modal with spinner */}
+      {Platform.OS === 'ios' && (
+        <Modal visible={visible} transparent animationType="slide">
           <View style={styles.overlay}>
             <View style={styles.sheet}>
               <View style={styles.header}>
                 <Text style={styles.headerTitle}>Select Date</Text>
-                <TouchableOpacity onPress={() => setIosVisible(false)}>
+                <TouchableOpacity onPress={() => setVisible(false)}>
                   <Text style={styles.done}>Done</Text>
                 </TouchableOpacity>
               </View>
               <DateTimePicker
-                value={parsed >= minDate ? parsed : minDate}
+                value={pickerValue}
                 minimumDate={minDate}
                 mode="date"
                 display="spinner"
-                onChange={(_e, date) => { if (date) onChange(toLocalISO(date)); }}
+                onChange={handleChange}
                 style={{ width: '100%' }}
               />
             </View>

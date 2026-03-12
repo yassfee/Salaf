@@ -419,7 +419,7 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.cardDisplay} onPress={openWalletModal} activeOpacity={0.85}>
             <View style={styles.cardTopRow}>
               <View style={styles.cardChipIcon}>
-                <Ionicons name="card-outline" size={14} color="rgba(255,255,255,0.7)" />
+                <Ionicons name="card-outline" size={14} color={Colors.primary} />
               </View>
               {cardDisplayBrand ? (
                 <Text style={styles.cardBrand}>{cardDisplayBrand}</Text>
@@ -447,58 +447,60 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-          </View>
-        ) : (
-          <>
-            {/* Quick Actions */}
-            <View style={styles.quickRow}>
-              {[
-                { label: 'Notify',    icon: 'notifications-outline',    onPress: () => setNotifyVisible(true) },
-                { label: 'Lend',      icon: 'arrow-up-outline',         onPress: openLend },
-                { label: 'Borrow',    icon: 'arrow-down-outline',       onPress: openBorrow },
-                { label: 'Requests',  icon: 'git-pull-request-outline', onPress: openRequests },
-              ].map(({ label, icon, onPress }) => (
-                <TouchableOpacity key={label} style={styles.quickItem} activeOpacity={0.8} onPress={onPress}>
-                  <View style={styles.quickCircle}>
-                    <Ionicons name={icon as any} size={22} color="#FFFFFF" />
-                  </View>
-                  <Text style={styles.quickLabel}>{label}</Text>
-                </TouchableOpacity>
-              ))}
+        {/* Gray rounded body */}
+        <View style={styles.body}>
+          {loading ? (
+            <View style={styles.center}>
+              <ActivityIndicator size="large" color={Colors.primary} />
             </View>
-
-            {/* Due Soon */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Due Soon</Text>
-                <View style={styles.countBadge}>
-                  <Text style={styles.countText}>{dueSoon.length}</Text>
-                </View>
+          ) : (
+            <>
+              {/* Quick Actions */}
+              <View style={styles.quickRow}>
+                {[
+                  { label: 'Notify',    icon: 'notifications-outline',    onPress: () => setNotifyVisible(true) },
+                  { label: 'Lend',      icon: 'arrow-up-outline',         onPress: openLend },
+                  { label: 'Borrow',    icon: 'arrow-down-outline',       onPress: openBorrow },
+                  { label: 'Requests',  icon: 'git-pull-request-outline', onPress: openRequests },
+                ].map(({ label, icon, onPress }) => (
+                  <TouchableOpacity key={label} style={styles.quickItem} activeOpacity={0.8} onPress={onPress}>
+                    <View style={styles.quickCircle}>
+                      <Ionicons name={icon as any} size={22} color="#FFFFFF" />
+                    </View>
+                    <Text style={styles.quickLabel}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-              {dueSoon.length === 0 ? (
-                <Text style={styles.emptyText}>No lends due soon.</Text>
-              ) : (
-                dueSoon.map((lend) => (
-                  <LendCard
-                    key={`${lend.type}-${lend.id}`}
-                    lend={lend}
-                    onPress={() => {
-                      if (lend.type === 'BORROWED') {
-                        router.push(`/lend-details?id=${lend.id}&incoming=true`);
-                      } else {
-                        router.push(`/lend-details?id=${lend.id}`);
-                      }
-                    }}
-                  />
-                ))
-              )}
-            </View>
 
-          </>
-        )}
+              {/* Due Soon */}
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Due Soon</Text>
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countText}>{dueSoon.length}</Text>
+                  </View>
+                </View>
+                {dueSoon.length === 0 ? (
+                  <Text style={styles.emptyText}>No lends due soon.</Text>
+                ) : (
+                  dueSoon.map((lend) => (
+                    <LendCard
+                      key={`${lend.type}-${lend.id}`}
+                      lend={lend}
+                      onPress={() => {
+                        if (lend.type === 'BORROWED') {
+                          router.push(`/lend-details?id=${lend.id}&incoming=true`);
+                        } else {
+                          router.push(`/lend-details?id=${lend.id}`);
+                        }
+                      }}
+                    />
+                  ))
+                )}
+              </View>
+            </>
+          )}
+        </View>
       </ScrollView>
 
       {/* Toast */}
@@ -1025,7 +1027,7 @@ export default function HomeScreen() {
             ) : (
               <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 12 }}>
                 {requestsTab === 'incoming' ? (
-                  incomingLends.length === 0 ? (
+                  incomingLends.length === 0 || (pendingIncoming.length === 0 && handledIncoming.length === 0) ? (
                     <Text style={styles.reqEmptyText}>No incoming lend requests.</Text>
                   ) : (
                     <>
@@ -1039,8 +1041,8 @@ export default function HomeScreen() {
                                   <View style={styles.reqAvatar}>
                                     <Text style={styles.reqAvatarText}>{getInitials(req.lenderName)}</Text>
                                   </View>
-                                  <View>
-                                    <Text style={styles.reqContactName}>From: {req.lenderName}</Text>
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={styles.reqContactName} numberOfLines={1}>From: {req.lenderName}</Text>
                                     <Text style={styles.reqAmount}>{formatCurrency(req.amount)}</Text>
                                   </View>
                                 </View>
@@ -1083,8 +1085,8 @@ export default function HomeScreen() {
                                   <View style={styles.reqAvatar}>
                                     <Text style={styles.reqAvatarText}>{getInitials(req.lenderName)}</Text>
                                   </View>
-                                  <View>
-                                    <Text style={styles.reqContactName}>From: {req.lenderName}</Text>
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={styles.reqContactName} numberOfLines={1}>From: {req.lenderName}</Text>
                                     <Text style={styles.reqAmount}>{formatCurrency(req.amount)}</Text>
                                   </View>
                                 </View>
@@ -1108,8 +1110,8 @@ export default function HomeScreen() {
                             <View style={styles.reqAvatar}>
                               <Text style={styles.reqAvatarText}>{getInitials(req.contact)}</Text>
                             </View>
-                            <View>
-                              <Text style={styles.reqContactName}>{req.contact} wants to borrow</Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.reqContactName} numberOfLines={1}>{req.contact} wants to borrow</Text>
                               <Text style={styles.reqAmount}>{formatCurrency(req.amount)}</Text>
                             </View>
                           </View>
@@ -1141,10 +1143,15 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.background },
+  safeArea: { flex: 1, backgroundColor: Colors.primary },
   header: {
-    marginHorizontal: 16, marginTop: 8, paddingHorizontal: 20,
-    paddingTop: 16, paddingBottom: 28, backgroundColor: Colors.primary, borderRadius: 28,
+    paddingHorizontal: 20, paddingTop: 24, paddingBottom: 28,
+    backgroundColor: Colors.primary,
+  },
+  body: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    overflow: 'hidden', flexGrow: 1, paddingBottom: 40,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 },
   userRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -1163,8 +1170,8 @@ const styles = StyleSheet.create({
   totalChip: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: '#EFEFEF', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 7 },
   totalChipText: { fontSize: 13, fontWeight: '600', color: '#121212' },
   center: { paddingVertical: 80, alignItems: 'center' },
-  scroll: { flex: 1, backgroundColor: Colors.background },
-  scrollContent: { paddingBottom: 24 },
+  scroll: { flex: 1, backgroundColor: Colors.primary },
+  scrollContent: { flexGrow: 1 },
   quickRow: { flexDirection: 'row', justifyContent: 'space-evenly', paddingHorizontal: 20, paddingVertical: 20 },
   quickItem: { alignItems: 'center', gap: 8 },
   quickCircle: { width: 56, height: 56, borderRadius: 16, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 3 },
@@ -1262,16 +1269,16 @@ const styles = StyleSheet.create({
   reqRejectText: { color: Colors.textPrimary, fontWeight: '600', fontSize: 13 },
   // Card display in header
   cardDisplay: {
-    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: 16,
-    marginBottom: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: '#EFEFEF', borderRadius: 16, padding: 16,
+    marginBottom: 14,
   },
   cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  cardChipIcon: { width: 28, height: 20, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
-  cardBrand: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.85)', letterSpacing: 1 },
-  cardNumber: { fontSize: 19, fontWeight: '700', color: '#FFFFFF', letterSpacing: 4, marginBottom: 14 },
+  cardChipIcon: { width: 28, height: 20, borderRadius: 4, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  cardBrand: { fontSize: 12, fontWeight: '700', color: Colors.primary, letterSpacing: 1 },
+  cardNumber: { fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: 4, marginBottom: 14 },
   cardBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  cardFieldLabel: { fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.6)', letterSpacing: 1, marginBottom: 2 },
-  cardFieldValue: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+  cardFieldLabel: { fontSize: 9, fontWeight: '600', color: Colors.textSecondary, letterSpacing: 1, marginBottom: 2 },
+  cardFieldValue: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
   // Wallet modal inputs
   walletFieldLabel: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6, marginTop: 12 },
   walletInputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 14, height: 52, backgroundColor: Colors.background },
