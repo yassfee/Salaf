@@ -11,12 +11,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
 import { Colors } from '../../constants/colors';
 import { getLendById, getCurrentUser, LendResponse } from '../../services/api';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import OutlinedButton from '../../components/ui/OutlinedButton';
 import { formatDate, formatCurrency } from '../../utils/formatCurrency';
+import { downloadReceipt } from '../../utils/pdfUtils';
 
 export default function ReceiptPreviewScreen() {
   const router = useRouter();
@@ -25,6 +25,7 @@ export default function ReceiptPreviewScreen() {
   const [lend, setLend] = useState<LendResponse | null>(null);
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -48,23 +49,12 @@ export default function ReceiptPreviewScreen() {
 
   const handleDownloadPDF = async () => {
     if (!lend) return;
+    
+    setDownloading(true);
     try {
-      const pdfUrl = `http://localhost:8080/api/pdf/receipt/${lend.id}`;
-      await Clipboard.setStringAsync(pdfUrl);
-      Alert.alert('Success', 'PDF download URL copied to clipboard');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to generate PDF URL');
-    }
-  };
-
-  const handleShareReceipt = async () => {
-    if (!lend) return;
-    try {
-      const pdfUrl = `http://localhost:8080/api/pdf/receipt/${lend.id}`;
-      await Clipboard.setStringAsync(pdfUrl);
-      Alert.alert('Success', 'Receipt URL copied to clipboard for sharing');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to generate share URL');
+      await downloadReceipt(lend.id, { showSuccessAlert: true, allowShare: true });
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -107,10 +97,15 @@ export default function ReceiptPreviewScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Receipt Preview</Text>
         <TouchableOpacity
-          onPress={handleShareReceipt}
+          onPress={handleDownloadPDF}
           style={styles.shareBtn}
+          disabled={downloading}
         >
-          <Ionicons name="share-outline" size={24} color={Colors.primary} />
+          <Ionicons 
+            name="share-outline" 
+            size={24} 
+            color={downloading ? Colors.textSecondary : Colors.primary} 
+          />
         </TouchableOpacity>
       </View>
 
@@ -198,13 +193,10 @@ export default function ReceiptPreviewScreen() {
         {/* Actions */}
         <View style={styles.actions}>
           <PrimaryButton
-            title="Download PDF"
+            title={downloading ? "Downloading..." : "Download PDF"}
             onPress={handleDownloadPDF}
-          />
-          <View style={styles.spacer} />
-          <OutlinedButton
-            title="Share Receipt"
-            onPress={handleShareReceipt}
+            loading={downloading}
+            disabled={downloading}
           />
         </View>
       </ScrollView>

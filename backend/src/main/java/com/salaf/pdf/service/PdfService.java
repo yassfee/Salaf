@@ -1,6 +1,8 @@
 package com.salaf.pdf.service;
 
+import com.itextpdf.kernel.colors.Color;
 import com.itextpdf.kernel.colors.ColorConstants;
+import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
@@ -27,6 +29,17 @@ public class PdfService {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd MMM yyyy");
     private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm");
 
+    // Color scheme for PDF styling
+    private static final Color PRIMARY_COLOR = new DeviceRgb(41, 128, 185);      // Blue #2980b9
+    private static final Color SECONDARY_COLOR = new DeviceRgb(52, 152, 219);    // Light Blue #3498db
+    private static final Color DARK_HEADER = new DeviceRgb(44, 62, 80);          // Dark Blue-Gray #2c3e50
+    private static final Color LIGHT_HEADER = new DeviceRgb(236, 240, 241);      // Light Gray #ecf0f1
+    private static final Color SUCCESS_COLOR = new DeviceRgb(39, 174, 96);       // Green #27ae60
+    private static final Color WARNING_COLOR = new DeviceRgb(230, 126, 34);      // Orange #e67e22
+    private static final Color DANGER_COLOR = new DeviceRgb(231, 76, 60);        // Red #e74c3c
+    private static final Color TEXT_DARK = new DeviceRgb(44, 62, 80);            // Dark text #2c3e50
+    private static final Color TEXT_LIGHT = ColorConstants.WHITE;                 // White text
+
     // Task 8 — FR-22, FR-23: generate a lend receipt PDF
     public byte[] generateLendReceipt(Long lendId, User user) {
         LendRequest lend = lendRequestRepository.findByIdAndLender(lendId, user)
@@ -36,10 +49,11 @@ public class PdfService {
 
         try (Document doc = new Document(new PdfDocument(new PdfWriter(baos)))) {
 
-            // Title
+            // Title with primary color
             doc.add(new Paragraph("Salaf — Lend Receipt")
                     .setBold()
                     .setFontSize(22)
+                    .setFontColor(PRIMARY_COLOR)
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginBottom(6));
 
@@ -49,21 +63,29 @@ public class PdfService {
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginBottom(20));
 
-            // Detail table
+            // Detail table with enhanced styling
             Table table = new Table(UnitValue.createPercentArray(new float[]{35, 65}))
                     .useAllAvailableWidth();
 
-            addRow(table, "Lend ID",    "#" + lend.getId());
-            addRow(table, "Lender",     user.getName());
-            addRow(table, "Borrower",   lend.getBorrower().getName());
-            addRow(table, "Amount",     "BD " + lend.getAmount().toPlainString());
-            addRow(table, "Remaining",  "BD " + lend.getRemainingBalance().toPlainString());
-            addRow(table, "Due Date",   lend.getDueDate().format(DATE_FMT));
-            addRow(table, "Status",     lend.getStatus().name());
-            addRow(table, "Created",    lend.getCreatedAt().format(DATETIME_FMT));
+            addStyledRow(table, "Lend ID", "#" + lend.getId(), DARK_HEADER, TEXT_LIGHT, true);
+            addStyledRow(table, "Lender", user.getName(), LIGHT_HEADER, TEXT_DARK, false);
+            addStyledRow(table, "Borrower", lend.getBorrower().getName(), LIGHT_HEADER, TEXT_DARK, false);
+            addStyledRow(table, "Amount", "BD " + lend.getAmount().toPlainString(), LIGHT_HEADER, TEXT_DARK, false);
+            
+            // Color-code remaining balance based on amount
+            Color balanceColor = lend.getRemainingBalance().compareTo(java.math.BigDecimal.ZERO) > 0 ? DANGER_COLOR : SUCCESS_COLOR;
+            addStyledRow(table, "Remaining", "BD " + lend.getRemainingBalance().toPlainString(), LIGHT_HEADER, balanceColor, false);
+            
+            addStyledRow(table, "Due Date", lend.getDueDate().format(DATE_FMT), LIGHT_HEADER, TEXT_DARK, false);
+            
+            // Color-code status
+            Color statusColor = getStatusColor(lend.getStatus().name());
+            addStyledRow(table, "Status", lend.getStatus().name(), LIGHT_HEADER, statusColor, false);
+            
+            addStyledRow(table, "Created", lend.getCreatedAt().format(DATETIME_FMT), LIGHT_HEADER, TEXT_DARK, false);
 
             if (lend.getNote() != null && !lend.getNote().isBlank()) {
-                addRow(table, "Note", lend.getNote());
+                addStyledRow(table, "Note", lend.getNote(), SECONDARY_COLOR, TEXT_LIGHT, false);
             }
 
             doc.add(table);
@@ -88,10 +110,11 @@ public class PdfService {
 
         try (Document doc = new Document(new PdfDocument(new PdfWriter(baos)))) {
 
-            // Title
+            // Title with primary color
             doc.add(new Paragraph("Salaf — Payment Receipt")
                     .setBold()
                     .setFontSize(22)
+                    .setFontColor(PRIMARY_COLOR)
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginBottom(6));
 
@@ -101,32 +124,50 @@ public class PdfService {
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginBottom(20));
 
-            // Detail table
+            // Detail table with enhanced styling
             Table table = new Table(UnitValue.createPercentArray(new float[]{35, 65}))
                     .useAllAvailableWidth();
 
-            addRow(table, "Receipt No.",  "RCP-" + String.format("%05d", lend.getId()));
-            addRow(table, "Lender",       lend.getLender().getName());
-            addRow(table, "Borrower",     lend.getBorrower().getName());
-            addRow(table, "Original Amount", "BD " + lend.getAmount().toPlainString());
-            addRow(table, "Amount Paid",  "BD " + lend.getAmount().subtract(lend.getRemainingBalance()).toPlainString());
-            addRow(table, "Remaining Balance", "BD " + lend.getRemainingBalance().toPlainString());
-            addRow(table, "Due Date",     lend.getDueDate().format(DATE_FMT));
-            addRow(table, "Status",       lend.getStatus().name());
-            addRow(table, "Created",      lend.getCreatedAt().format(DATETIME_FMT));
+            // Header row with dark background
+            addStyledRow(table, "Receipt No.", "RCP-" + String.format("%05d", lend.getId()), DARK_HEADER, TEXT_LIGHT, true);
+            
+            // Party information with light background
+            addStyledRow(table, "Lender", lend.getLender().getName(), LIGHT_HEADER, TEXT_DARK, false);
+            addStyledRow(table, "Borrower", lend.getBorrower().getName(), LIGHT_HEADER, TEXT_DARK, false);
+            
+            // Financial information
+            addStyledRow(table, "Original Amount", "BD " + lend.getAmount().toPlainString(), LIGHT_HEADER, TEXT_DARK, false);
+            
+            // Amount paid in green
+            java.math.BigDecimal amountPaid = lend.getAmount().subtract(lend.getRemainingBalance());
+            addStyledRow(table, "Amount Paid", "BD " + amountPaid.toPlainString(), LIGHT_HEADER, SUCCESS_COLOR, false);
+            
+            // Remaining balance - red if > 0, green if 0
+            Color balanceColor = lend.getRemainingBalance().compareTo(java.math.BigDecimal.ZERO) > 0 ? DANGER_COLOR : SUCCESS_COLOR;
+            addStyledRow(table, "Remaining Balance", "BD " + lend.getRemainingBalance().toPlainString(), LIGHT_HEADER, balanceColor, false);
+            
+            addStyledRow(table, "Due Date", lend.getDueDate().format(DATE_FMT), LIGHT_HEADER, TEXT_DARK, false);
+            
+            // Status with appropriate color
+            Color statusColor = getStatusColor(lend.getStatus().name());
+            addStyledRow(table, "Status", lend.getStatus().name(), LIGHT_HEADER, statusColor, false);
+            
+            addStyledRow(table, "Created", lend.getCreatedAt().format(DATETIME_FMT), LIGHT_HEADER, TEXT_DARK, false);
 
             if (lend.getNote() != null && !lend.getNote().isBlank()) {
-                addRow(table, "Note", lend.getNote());
+                addStyledRow(table, "Note", lend.getNote(), SECONDARY_COLOR, TEXT_LIGHT, false);
             }
 
             doc.add(table);
 
-            // Acknowledgment section
+            // Acknowledgment section with success color
             if (lend.getStatus().name().equals("ACCEPTED") || 
                 lend.getStatus().name().equals("PARTIALLY_PAID") || 
                 lend.getStatus().name().equals("PAID")) {
                 doc.add(new Paragraph("\nAcknowledged by " + lend.getBorrower().getName())
                         .setFontSize(12)
+                        .setFontColor(SUCCESS_COLOR)
+                        .setBold()
                         .setTextAlignment(TextAlignment.CENTER)
                         .setMarginTop(20));
             }
@@ -142,11 +183,50 @@ public class PdfService {
         return baos.toByteArray();
     }
 
+    // Helper method to add styled rows to table
+    private void addStyledRow(Table table, String label, String value, Color backgroundColor, Color textColor, boolean isHeader) {
+        Cell labelCell = new Cell()
+                .add(new Paragraph(label).setBold().setFontColor(textColor))
+                .setBackgroundColor(backgroundColor)
+                .setPadding(8);
+        
+        Cell valueCell = new Cell()
+                .add(new Paragraph(value).setFontColor(textColor))
+                .setBackgroundColor(backgroundColor)
+                .setPadding(8);
+        
+        if (isHeader) {
+            labelCell.setBold();
+            valueCell.setBold();
+        }
+        
+        table.addCell(labelCell);
+        table.addCell(valueCell);
+    }
+
+    // Helper method to get appropriate color for status
+    private Color getStatusColor(String status) {
+        switch (status.toUpperCase()) {
+            case "PAID":
+                return SUCCESS_COLOR;
+            case "OVERDUE":
+                return DANGER_COLOR;
+            case "PARTIALLY_PAID":
+            case "ACCEPTED":
+            case "ACTIVE":
+                return WARNING_COLOR;
+            case "PENDING":
+            case "BORROW_REQUESTED":
+                return SECONDARY_COLOR;
+            case "REJECTED":
+                return DANGER_COLOR;
+            default:
+                return TEXT_DARK;
+        }
+    }
+
+    // Legacy method for backward compatibility
     private void addRow(Table table, String label, String value) {
-        table.addCell(new Cell()
-                .add(new Paragraph(label).setBold())
-                .setBackgroundColor(ColorConstants.LIGHT_GRAY));
-        table.addCell(new Cell()
-                .add(new Paragraph(value)));
+        addStyledRow(table, label, value, LIGHT_HEADER, TEXT_DARK, false);
     }
 }

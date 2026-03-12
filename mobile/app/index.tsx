@@ -1,5 +1,30 @@
+import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Index() {
-  return <Redirect href="/auth" />;
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      setIsAuthenticated(!!token);
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      setIsAuthenticated(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return null; // Or a loading screen
+  }
+
+  return <Redirect href={isAuthenticated ? "/(tabs)" : "/auth"} />;
 }
