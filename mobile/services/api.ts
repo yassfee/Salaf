@@ -135,8 +135,22 @@ export async function getCurrentUser(): Promise<StoredUser | null> {
 
 // ── Users ─────────────────────────────────────────────────────────────────────
 
+export interface UserBadges {
+  onTimeHero: boolean;
+  trustedLender: boolean;
+  debtFree: boolean;
+  completedLends: number;
+  overdueCount: number;
+  outstandingBorrowed: string;
+}
+
 export async function searchUsers(query: string): Promise<UserSearchResult[]> {
   const res = await api.get<UserSearchResult[]>('/api/users/search', { params: { q: query } });
+  return res.data;
+}
+
+export async function getUserBadges(userId: number): Promise<UserBadges> {
+  const res = await api.get<UserBadges>(`/api/users/${userId}/badges`);
   return res.data;
 }
 

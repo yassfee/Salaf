@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Modal, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -22,6 +22,18 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
+  const toastAnim = useRef(new Animated.Value(0)).current;
+  const [toastVisible, setToastVisible] = useState(false);
+
+  const showToast = useCallback(() => {
+    setToastVisible(true);
+    Animated.sequence([
+      Animated.timing(toastAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+      Animated.delay(1800),
+      Animated.timing(toastAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
+    ]).start(() => setToastVisible(false));
+  }, [toastAnim]);
 
   const load = useCallback(async () => {
     try {
@@ -45,17 +57,12 @@ export default function NotificationsScreen() {
     router.push(lendRoute(n) as any);
   };
 
-  const handleDelete = (id: number) => {
-    Alert.alert('Delete notification', 'Remove this notification?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive',
-        onPress: async () => {
-          await deleteNotification(id).catch(() => {});
-          setNotifications((prev) => prev.filter((n) => n.id !== id));
-        },
-      },
-    ]);
+  const handleConfirmDelete = async () => {
+    if (confirmId === null) return;
+    await deleteNotification(confirmId).catch(() => {});
+    setNotifications((prev) => prev.filter((n) => n.id !== confirmId));
+    setConfirmId(null);
+    showToast();
   };
 
   const handleMarkAllRead = async () => {
@@ -68,7 +75,7 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
@@ -122,15 +129,50 @@ export default function NotificationsScreen() {
 
               <TouchableOpacity
                 style={styles.deleteBtn}
-                onPress={() => handleDelete(n.id)}
+                onPress={() => setConfirmId(n.id)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="trash-outline" size={16} color={Colors.danger} />
+                <Ionicons name="trash-outline" size={16} color={Colors.primary} />
               </TouchableOpacity>
             </View>
           ))}
         </ScrollView>
       )}
+
+      {/* ── Toast ─────────────────────────────────────────────────────────── */}
+      {toastVisible && (
+        <Animated.View style={[styles.toast, {
+          opacity: toastAnim,
+          transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [60, 0] }) }],
+        }]}>
+          <View style={styles.toastIconWrap}>
+            <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.toastTitle}>Notification deleted</Text>
+            <Text style={styles.toastSub}>The notification has been removed.</Text>
+          </View>
+        </Animated.View>
+      )}
+
+      {/* ── Delete Confirmation Modal ─────────────────────────────────────── */}
+      <Modal visible={confirmId !== null} transparent animationType="fade">
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmSheet}>
+            <View style={styles.confirmIconWrap}>
+              <Ionicons name="trash-outline" size={28} color={Colors.primary} />
+            </View>
+            <Text style={styles.confirmTitle}>Delete Notification</Text>
+            <Text style={styles.confirmMessage}>Are you sure you want to remove this notification? This cannot be undone.</Text>
+            <TouchableOpacity style={styles.confirmDeleteBtn} onPress={handleConfirmDelete}>
+              <Text style={styles.confirmDeleteText}>Delete</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setConfirmId(null)}>
+              <Text style={styles.confirmCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -167,7 +209,22 @@ const styles = StyleSheet.create({
   cardTime: { fontSize: 11, color: Colors.textSecondary, marginTop: 4 },
   deleteBtn: {
     width: 28, height: 28, borderRadius: 8,
-    borderWidth: 1.5, borderColor: Colors.danger,
+    borderWidth: 1.5, borderColor: Colors.primary,
     alignItems: 'center', justifyContent: 'center', marginLeft: 8,
   },
+  // Toast
+  toast: { position: 'absolute', bottom: 24, left: 20, right: 20, backgroundColor: Colors.card, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 8 },
+  toastIconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.successLight, alignItems: 'center', justifyContent: 'center' },
+  toastTitle: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  toastSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 1 },
+  // Confirm modal
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  confirmSheet: { width: '100%', backgroundColor: Colors.card, borderRadius: 20, padding: 24, alignItems: 'center' },
+  confirmIconWrap: { width: 56, height: 56, borderRadius: 16, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  confirmTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8 },
+  confirmMessage: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
+  confirmDeleteBtn: { width: '100%', backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 13, alignItems: 'center', marginBottom: 10 },
+  confirmDeleteText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  confirmCancelBtn: { width: '100%', alignItems: 'center', paddingVertical: 10 },
+  confirmCancelText: { fontSize: 14, color: Colors.textSecondary, fontWeight: '600' },
 });

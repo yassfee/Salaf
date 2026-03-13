@@ -32,14 +32,26 @@ public class LendRequestService {
     private final NotificationRepository notificationRepository;
     private final WalletRepository walletRepository;
 
-    private void adjustBalance(User user, BigDecimal delta) {
-        Wallet wallet = walletRepository.findByUser(user).orElseGet(() -> {
+    private Wallet getOrCreateWallet(User user) {
+        return walletRepository.findByUser(user).orElseGet(() -> {
             Wallet w = new Wallet();
             w.setUser(user);
             return walletRepository.save(w);
         });
+    }
+
+    private void adjustBalance(User user, BigDecimal delta) {
+        Wallet wallet = getOrCreateWallet(user);
         wallet.setBalance(wallet.getBalance().add(delta));
         walletRepository.save(wallet);
+    }
+
+    private void requireSufficientBalance(User user, BigDecimal amount) {
+        BigDecimal balance = getOrCreateWallet(user).getBalance();
+        if (balance.compareTo(amount) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Insufficient balance. You have " + balance.toPlainString() + " BD but need " + amount.toPlainString() + " BD.");
+        }
     }
 
     @Transactional
@@ -47,6 +59,8 @@ public class LendRequestService {
         Contact borrower = contactRepository.findById(req.getContactId())
                 .filter(c -> c.getOwner().getId().equals(lender.getId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contact not found"));
+
+        requireSufficientBalance(lender, req.getAmount());
 
         LendRequest lend = new LendRequest();
         lend.setLender(lender);
@@ -109,6 +123,7 @@ public class LendRequestService {
         if (lend.getStatus() != LendStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Lend is not in PENDING status");
         }
+        requireSufficientBalance(lend.getLender(), lend.getAmount());
         lend.setStatus(LendStatus.ACCEPTED);
         LendResponseDto result = LendResponseDto.fromBorrowerView(lendRequestRepository.save(lend));
         // Money exchanged: lender pays out, borrower receives
@@ -210,6 +225,7 @@ public class LendRequestService {
         if (lend.getStatus() != LendStatus.BORROW_REQUESTED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Not a pending borrow request");
         }
+        requireSufficientBalance(lend.getLender(), lend.getAmount());
         lend.setStatus(LendStatus.ACCEPTED);
         LendResponseDto result = LendResponseDto.from(lendRequestRepository.save(lend));
         // Money exchanged: lender pays out, borrower receives

@@ -21,6 +21,14 @@ export default function RequestsScreen() {
   const [borrowRequests, setBorrowRequests] = useState<LendResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [agreed, setAgreed] = useState<Record<number, boolean>>({});
+  const [errorMsg, setErrorMsg] = useState('');
+  const [errorVisible, setErrorVisible] = useState(false);
+
+  const showError = useCallback((msg: string) => {
+    setErrorMsg(msg);
+    setErrorVisible(true);
+    setTimeout(() => setErrorVisible(false), 4000);
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -53,14 +61,14 @@ export default function RequestsScreen() {
 
   const handleAccept = async (id: number) => {
     if (!agreed[id]) {
-      Alert.alert('Agreement Required', 'Please check the agreement box before accepting.');
+      showError('Please check the agreement box before accepting.');
       return;
     }
     try {
       const updated = await acceptLend(id);
       setIncomingLends((prev) => prev.map((l) => (l.id === id ? updated : l)));
-    } catch {
-      Alert.alert('Error', 'Failed to accept lend.');
+    } catch (e: any) {
+      showError(e?.response?.data?.message ?? 'Failed to accept lend.');
     }
   };
 
@@ -68,8 +76,8 @@ export default function RequestsScreen() {
     try {
       const updated = await rejectLend(id);
       setIncomingLends((prev) => prev.map((l) => (l.id === id ? updated : l)));
-    } catch {
-      Alert.alert('Error', 'Failed to reject lend.');
+    } catch (e: any) {
+      showError(e?.response?.data?.message ?? 'Failed to reject lend.');
     }
   };
 
@@ -78,8 +86,8 @@ export default function RequestsScreen() {
     try {
       const updated = await approveBorrowRequest(id);
       setBorrowRequests((prev) => prev.map((l) => (l.id === id ? updated : l)));
-    } catch {
-      Alert.alert('Error', 'Failed to approve request.');
+    } catch (e: any) {
+      showError(e?.response?.data?.message ?? 'Failed to approve request.');
     }
   };
 
@@ -87,8 +95,8 @@ export default function RequestsScreen() {
     try {
       const updated = await declineBorrowRequest(id);
       setBorrowRequests((prev) => prev.map((l) => (l.id === id ? updated : l)));
-    } catch {
-      Alert.alert('Error', 'Failed to decline request.');
+    } catch (e: any) {
+      showError(e?.response?.data?.message ?? 'Failed to decline request.');
     }
   };
 
@@ -220,6 +228,12 @@ export default function RequestsScreen() {
           </View>
         ) : activeTab === 'incoming' ? (
           <View style={styles.px}>
+            {errorVisible && (
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle" size={18} color={Colors.danger} />
+                <Text style={styles.errorBannerText}>{errorMsg}</Text>
+              </View>
+            )}
             {incomingLends.length === 0 ? (
               <View style={styles.empty}>
                 <Text style={styles.emptyText}>No incoming lend requests.</Text>
@@ -249,6 +263,12 @@ export default function RequestsScreen() {
           </View>
         ) : (
           <View style={styles.px}>
+            {errorVisible && (
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle" size={18} color={Colors.danger} />
+                <Text style={styles.errorBannerText}>{errorMsg}</Text>
+              </View>
+            )}
             {borrowRequests.length === 0 ? (
               <View style={styles.empty}>
                 <Text style={styles.emptyText}>No borrow requests received.</Text>
@@ -259,6 +279,7 @@ export default function RequestsScreen() {
           </View>
         )}
       </ScrollView>
+
     </SafeAreaView>
   );
 }
@@ -312,4 +333,6 @@ const styles = StyleSheet.create({
   rejectText: { color: Colors.textPrimary, fontWeight: '600', fontSize: 14 },
   empty: { paddingVertical: 40, alignItems: 'center' },
   emptyText: { fontSize: 14, color: Colors.textSecondary },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.dangerLight, borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: Colors.danger },
+  errorBannerText: { flex: 1, fontSize: 13, color: Colors.danger, fontWeight: '600' },
 });

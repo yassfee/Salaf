@@ -186,22 +186,24 @@ export default function SuggestRepaymentScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Yellow header — title + tabs */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Repayment Planner</Text>
+        <View style={styles.tabRow}>
+          {TABS.map((t) => (
+            <TouchableOpacity
+              key={t.key}
+              style={[styles.tab, tab === t.key && styles.tabActive]}
+              onPress={() => setTab(t.key)}
+            >
+              <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>{t.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabRow}>
-        {TABS.map((t) => (
-          <TouchableOpacity
-            key={t.key}
-            style={[styles.tab, tab === t.key && styles.tabActive]}
-            onPress={() => setTab(t.key)}
-          >
-            <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {/* Gray rounded body */}
+      <View style={styles.body}>
 
       {/* ── Plan Tab ── */}
       {tab === 'plan' && (
@@ -445,19 +447,30 @@ export default function SuggestRepaymentScreen() {
           )}
         </ScrollView>
       )}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: { paddingHorizontal: 20, paddingVertical: 12 },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center' },
-  tabRow: { flexDirection: 'row', marginHorizontal: 20, marginBottom: 4, borderRadius: 12, backgroundColor: Colors.card, padding: 4 },
-  tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
-  tabActive: { backgroundColor: Colors.primary },
-  tabText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
-  tabTextActive: { color: '#fff' },
+  container: { flex: 1, backgroundColor: Colors.primary },
+  header: {
+    paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20,
+    backgroundColor: Colors.primary,
+  },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: '#FFFFFF', marginBottom: 16, textAlign: 'left' },
+  body: {
+    flex: 1, backgroundColor: Colors.background,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden',
+  },
+  tabRow: { flexDirection: 'row', gap: 8 },
+  tab: {
+    flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  tabActive: { backgroundColor: '#FFFFFF' },
+  tabText: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
+  tabTextActive: { color: Colors.primary },
   scroll: { paddingHorizontal: 20, paddingBottom: 40 },
   sectionLabel: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary, marginTop: 20, marginBottom: 10 },
   budgetCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.primaryLight, borderRadius: 14, padding: 16, marginTop: 16 },

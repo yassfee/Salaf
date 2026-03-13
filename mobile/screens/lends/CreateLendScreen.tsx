@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Alert, TextInput, ActivityIndicator,
@@ -26,6 +26,14 @@ export default function CreateLendScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [errorVisible, setErrorVisible] = useState(false);
+
+  const showError = useCallback((msg: string) => {
+    setErrorMsg(msg);
+    setErrorVisible(true);
+    setTimeout(() => setErrorVisible(false), 4000);
+  }, []);
 
   useEffect(() => {
     getContacts()
@@ -54,7 +62,7 @@ export default function CreateLendScreen() {
       router.replace({ pathname: '/(tabs)', params: { toast: '1' } } as any);
     } catch (e: any) {
       const msg = e?.response?.data?.message ?? 'Failed to create lend.';
-      Alert.alert('Error', msg);
+      showError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -166,6 +174,13 @@ export default function CreateLendScreen() {
           </TouchableOpacity>
           {errors.agreed && <Text style={styles.errorText}>{errors.agreed}</Text>}
 
+          {errorVisible && (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={18} color={Colors.danger} />
+              <Text style={styles.errorBannerText}>{errorMsg}</Text>
+            </View>
+          )}
+
           <View style={styles.spacer} />
           <PrimaryButton
             title="➕ Submit Lend"
@@ -219,4 +234,6 @@ const styles = StyleSheet.create({
   },
   checkboxChecked: { backgroundColor: Colors.primary },
   agreementText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.dangerLight, borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: Colors.danger },
+  errorBannerText: { flex: 1, fontSize: 13, color: Colors.danger, fontWeight: '600' },
 });

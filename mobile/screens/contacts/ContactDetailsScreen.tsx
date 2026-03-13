@@ -8,13 +8,17 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import {
-  getContacts, getLends, createLend, createBorrowRequest,
-  ContactResponse, LendResponse,
+  getContacts, getLends, createLend, createBorrowRequest, getUserBadges,
+  ContactResponse, LendResponse, UserBadges,
 } from '../../services/api';
 import CardContainer from '../../components/ui/CardContainer';
 import StatusBadge from '../../components/ui/StatusBadge';
 import DatePickerField from '../../components/ui/DatePickerField';
 import { getInitials, formatDate, formatCurrency } from '../../utils/formatCurrency';
+
+const onTimeHeroEarned = (b: UserBadges) => b.onTimeHero;
+const trustedLenderEarned = (b: UserBadges) => b.trustedLender;
+const debtFreeEarned = (b: UserBadges) => b.debtFree;
 
 export default function ContactDetailsScreen() {
   const router = useRouter();
@@ -23,6 +27,7 @@ export default function ContactDetailsScreen() {
 
   const [contact, setContact] = useState<ContactResponse | null>(null);
   const [lends, setLends] = useState<LendResponse[]>([]);
+  const [contactBadges, setContactBadges] = useState<UserBadges | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Lend modal state
@@ -50,6 +55,10 @@ export default function ContactDetailsScreen() {
       const found = contacts.find((c) => c.id === contactId) ?? null;
       setContact(found);
       setLends(allLends.filter((l) => l.contactId === contactId));
+      if (found?.linkedUserId) {
+        const badges = await getUserBadges(found.linkedUserId).catch(() => null);
+        setContactBadges(badges);
+      }
     } catch {
       Alert.alert('Error', 'Failed to load contact details.');
     } finally {
@@ -126,135 +135,162 @@ export default function ContactDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Contact Details</Text>
-        <View style={styles.headerRight} />
-      </View>
-
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
-      ) : !contact ? (
-        <View style={styles.center}>
-          <Text style={styles.emptyText}>Contact not found.</Text>
-        </View>
-      ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-          {/* Profile Header */}
-          <View style={styles.profileHeader}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials(contact.name)}</Text>
-            </View>
-            <Text style={styles.name}>{contact.name}</Text>
-            {contact.email ? <Text style={styles.contactInfo}>{contact.email}</Text> : null}
-            {contact.phone ? <Text style={styles.contactInfo}>{contact.phone}</Text> : null}
-            {contact.linkedUserId ? (
-              <View style={styles.registeredBadge}>
-                <Ionicons name="checkmark-circle" size={13} color={Colors.success} />
-                <Text style={styles.registeredText}>On Salaf</Text>
-              </View>
-            ) : null}
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Yellow header — back button + profile info, all scrolls together */}
+        <View style={styles.yellowSection}>
+          <View style={styles.topBar}>
+            <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/contacts')} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Contact Details</Text>
+            <View style={styles.headerRight} />
           </View>
 
-          <View style={styles.px}>
-            {/* Stat Row */}
-            <View style={styles.statRow}>
-              <CardContainer style={styles.statCard}>
-                <Text style={styles.statLabel}>Active</Text>
-                <Text style={[styles.statValue, { color: Colors.primary }]}>{activeLends.length}</Text>
-              </CardContainer>
-              <CardContainer style={styles.statCard}>
-                <Text style={styles.statLabel}>Paid</Text>
-                <Text style={[styles.statValue, { color: Colors.success }]}>{paidLends.length}</Text>
-              </CardContainer>
-              <CardContainer style={styles.statCard}>
-                <Text style={styles.statLabel}>Overdue</Text>
-                <Text style={[styles.statValue, { color: Colors.danger }]}>{overdueLends.length}</Text>
-              </CardContainer>
+          {!loading && contact && (
+            <View style={styles.profileHeader}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{getInitials(contact.name)}</Text>
+              </View>
+              <Text style={styles.name}>{contact.name}</Text>
+              {contact.email ? <Text style={styles.contactInfo}>{contact.email}</Text> : null}
+              {contact.phone ? <Text style={styles.contactInfo}>{contact.phone}</Text> : null}
+              {contact.linkedUserId ? (
+                <View style={styles.registeredBadge}>
+                  <Ionicons name="checkmark-circle" size={13} color={Colors.success} />
+                  <Text style={styles.registeredText}>On Salaf</Text>
+                </View>
+              ) : null}
             </View>
+          )}
+        </View>
 
-            {/* Lend History */}
-            <Text style={styles.sectionTitle}>Lend History</Text>
-            {lends.length === 0 ? (
-              <Text style={styles.emptyText}>No lends with this contact.</Text>
-            ) : (
-              lends.map((lend) => (
+        {/* Gray rounded body */}
+        <View style={styles.body}>
+          {loading ? (
+            <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
+          ) : !contact ? (
+            <Text style={[styles.emptyText, { marginTop: 40 }]}>Contact not found.</Text>
+          ) : (<>
+            <View style={styles.px}>
+              {/* Stat Row */}
+              <View style={styles.statRow}>
+                <CardContainer style={styles.statCard}>
+                  <Text style={styles.statLabel}>Active</Text>
+                  <Text style={[styles.statValue, { color: Colors.primary }]}>{activeLends.length}</Text>
+                </CardContainer>
+                <CardContainer style={styles.statCard}>
+                  <Text style={styles.statLabel}>Paid</Text>
+                  <Text style={[styles.statValue, { color: Colors.success }]}>{paidLends.length}</Text>
+                </CardContainer>
+                <CardContainer style={styles.statCard}>
+                  <Text style={styles.statLabel}>Overdue</Text>
+                  <Text style={[styles.statValue, { color: Colors.danger }]}>{overdueLends.length}</Text>
+                </CardContainer>
+              </View>
+
+              {contactBadges && (onTimeHeroEarned(contactBadges) || trustedLenderEarned(contactBadges) || debtFreeEarned(contactBadges)) && (
+                <View style={styles.badgesSection}>
+                  <Text style={styles.sectionTitle}>Badges</Text>
+                  <View style={styles.badgeRow}>
+                    {onTimeHeroEarned(contactBadges) && (
+                      <View style={styles.badgeChip}>
+                        <Ionicons name="trophy-outline" size={14} color={Colors.primary} />
+                        <Text style={styles.badgeChipText}>On-Time Hero</Text>
+                      </View>
+                    )}
+                    {trustedLenderEarned(contactBadges) && (
+                      <View style={styles.badgeChip}>
+                        <Ionicons name="ribbon-outline" size={14} color={Colors.primary} />
+                        <Text style={styles.badgeChipText}>Trusted Lender</Text>
+                      </View>
+                    )}
+                    {debtFreeEarned(contactBadges) && (
+                      <View style={styles.badgeChip}>
+                        <Ionicons name="lock-closed-outline" size={14} color={Colors.primary} />
+                        <Text style={styles.badgeChipText}>Debt Free</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* Lend History */}
+              <Text style={styles.sectionTitle}>Lend History</Text>
+              {lends.length === 0 ? (
+                <Text style={styles.emptyText}>No lends with this contact.</Text>
+              ) : (
+                lends.map((lend) => (
+                  <TouchableOpacity
+                    key={lend.id}
+                    onPress={() => router.push(`/lend-details?id=${lend.id}`)}
+                    activeOpacity={0.85}
+                  >
+                    <CardContainer style={styles.lendCard}>
+                      <View style={styles.lendRow}>
+                        <View style={styles.lendIconWrap}>
+                          <Ionicons name="arrow-up-outline" size={18} color={Colors.textPrimary} />
+                        </View>
+                        <View style={styles.lendInfo}>
+                          <Text style={styles.lendAmount}>{formatCurrency(lend.amount)}</Text>
+                          <Text style={styles.lendDate}>Due {formatDate(lend.due)}</Text>
+                        </View>
+                        <StatusBadge status={lend.status} />
+                      </View>
+                      {lend.remainingBalance < lend.amount && (
+                        <Text style={styles.lendPaid}>
+                          Paid: {formatCurrency(lend.paid)} · Remaining: {formatCurrency(lend.remainingBalance)}
+                        </Text>
+                      )}
+                    </CardContainer>
+                  </TouchableOpacity>
+                ))
+              )}
+
+              <View style={styles.spacer} />
+
+              {!contact.linkedUserId && (
+                <View style={styles.notRegisteredBanner}>
+                  <Ionicons name="information-circle-outline" size={16} color={Colors.textSecondary} />
+                  <Text style={styles.notRegisteredText}>
+                    This contact is not registered on Salaf. Lend/Borrow is unavailable.
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.actionRow}>
                 <TouchableOpacity
-                  key={lend.id}
-                  onPress={() => router.push(`/lend-details?id=${lend.id}`)}
+                  style={[styles.actionBtn, styles.lendBtn, !contact.linkedUserId && styles.actionBtnDisabled]}
+                  onPress={() => {
+                    if (!contact.linkedUserId) {
+                      Alert.alert('Not Registered', 'This contact must be a registered Salaf user to create a lend.');
+                      return;
+                    }
+                    setLendVisible(true);
+                  }}
                   activeOpacity={0.85}
                 >
-                  <CardContainer style={styles.lendCard}>
-                    <View style={styles.lendRow}>
-                      <View style={styles.lendIconWrap}>
-                        <Ionicons name="arrow-up-outline" size={18} color={Colors.textPrimary} />
-                      </View>
-                      <View style={styles.lendInfo}>
-                        <Text style={styles.lendAmount}>{formatCurrency(lend.amount)}</Text>
-                        <Text style={styles.lendDate}>Due {formatDate(lend.due)}</Text>
-                      </View>
-                      <StatusBadge status={lend.status} />
-                    </View>
-                    {lend.remainingBalance < lend.amount && (
-                      <Text style={styles.lendPaid}>
-                        Paid: {formatCurrency(lend.paid)} · Remaining: {formatCurrency(lend.remainingBalance)}
-                      </Text>
-                    )}
-                  </CardContainer>
+                  <Ionicons name="arrow-up-outline" size={18} color="#fff" />
+                  <Text style={styles.actionBtnText}>Lend</Text>
                 </TouchableOpacity>
-              ))
-            )}
-
-            <View style={styles.spacer} />
-
-            {!contact.linkedUserId && (
-              <View style={styles.notRegisteredBanner}>
-                <Ionicons name="information-circle-outline" size={16} color={Colors.textSecondary} />
-                <Text style={styles.notRegisteredText}>
-                  This contact is not registered on Salaf. Lend/Borrow is unavailable.
-                </Text>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.borrowBtn, !contact.linkedUserId && styles.borrowBtnDisabled]}
+                  onPress={() => {
+                    if (!contact.linkedUserId) {
+                      Alert.alert('Not Registered', 'This contact must be a registered Salaf user to request a borrow.');
+                      return;
+                    }
+                    setBorrowVisible(true);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="arrow-down-outline" size={18} color={contact.linkedUserId ? Colors.primary : Colors.textSecondary} />
+                  <Text style={[styles.actionBtnText, { color: contact.linkedUserId ? Colors.primary : Colors.textSecondary }]}>Borrow</Text>
+                </TouchableOpacity>
               </View>
-            )}
-
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.lendBtn, !contact.linkedUserId && styles.actionBtnDisabled]}
-                onPress={() => {
-                  if (!contact.linkedUserId) {
-                    Alert.alert('Not Registered', 'This contact must be a registered Salaf user to create a lend.');
-                    return;
-                  }
-                  setLendVisible(true);
-                }}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="arrow-up-outline" size={18} color="#fff" />
-                <Text style={styles.actionBtnText}>Lend</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.borrowBtn, !contact.linkedUserId && styles.borrowBtnDisabled]}
-                onPress={() => {
-                  if (!contact.linkedUserId) {
-                    Alert.alert('Not Registered', 'This contact must be a registered Salaf user to request a borrow.');
-                    return;
-                  }
-                  setBorrowVisible(true);
-                }}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="arrow-down-outline" size={18} color={contact.linkedUserId ? Colors.primary : Colors.textSecondary} />
-                <Text style={[styles.actionBtnText, { color: contact.linkedUserId ? Colors.primary : Colors.textSecondary }]}>Borrow</Text>
-              </TouchableOpacity>
             </View>
-          </View>
-        </ScrollView>
-      )}
-
+          </>)}
+        </View>
+      </ScrollView>
       {/* ── Borrow Modal ───────────────────────────────────────────────────── */}
       <Modal visible={borrowVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -421,35 +457,42 @@ export default function ContactDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: {
+  container: { flex: 1, backgroundColor: Colors.primary },
+  topBar: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 20, paddingVertical: 12,
+    backgroundColor: Colors.primary,
   },
   backBtn: { padding: 4, marginRight: 8 },
   headerTitle: {
     flex: 1, fontSize: 18, fontWeight: '600',
-    color: Colors.textPrimary, textAlign: 'center',
+    color: '#FFFFFF', textAlign: 'center',
   },
   headerRight: { width: 32 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scroll: { paddingBottom: 40 },
-  profileHeader: { alignItems: 'center', paddingVertical: 28 },
+  scroll: { flex: 1, backgroundColor: Colors.primary },
+  scrollContent: { flexGrow: 1 },
+  yellowSection: { backgroundColor: Colors.primary },
+  profileHeader: { alignItems: 'center', paddingBottom: 28 },
   avatar: {
     width: 80, height: 80, borderRadius: 20,
-    backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+    backgroundColor: '#EFEFEF', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  avatarText: { fontSize: 28, fontWeight: '700', color: Colors.primaryDark },
-  name: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 },
-  contactInfo: { fontSize: 14, color: Colors.textSecondary, marginTop: 2 },
+  avatarText: { fontSize: 28, fontWeight: '700', color: '#121212' },
+  name: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', marginBottom: 4 },
+  contactInfo: { fontSize: 14, color: '#FFFFFF', opacity: 0.75, marginTop: 2 },
   registeredBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: Colors.successLight, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 10,
     paddingHorizontal: 8, paddingVertical: 3, marginTop: 8,
   },
-  registeredText: { fontSize: 12, fontWeight: '600', color: Colors.success },
+  registeredText: { fontSize: 12, fontWeight: '600', color: '#FFFFFF' },
+  body: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    overflow: 'hidden', flexGrow: 1, paddingBottom: 40,
+  },
   px: { paddingHorizontal: 20 },
-  statRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
+  statRow: { flexDirection: 'row', gap: 10, marginBottom: 24, marginTop: 20 },
   statCard: { flex: 1, alignItems: 'center', padding: 12 },
   statLabel: { fontSize: 11, color: Colors.textSecondary, marginBottom: 4, textAlign: 'center' },
   statValue: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
@@ -535,4 +578,12 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginTop: 4,
   },
   cancelBtnText: { color: Colors.textSecondary, fontWeight: '600', fontSize: 15 },
+  badgesSection: { marginBottom: 8 },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  badgeChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: Colors.primaryLight, borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 6,
+  },
+  badgeChipText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
 });

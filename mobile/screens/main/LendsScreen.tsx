@@ -10,6 +10,7 @@ import LendCard from '../../components/cards/LendCard';
 
 type DirectionTab = 'Lent' | 'Borrowed';
 type FilterChip = 'All' | 'Active' | 'Overdue' | 'Paid';
+type SortOrder = 'due' | 'recent';
 
 const filterChips: FilterChip[] = ['All', 'Active', 'Overdue', 'Paid'];
 
@@ -26,6 +27,7 @@ export default function LendsScreen() {
   const [lends, setLends] = useState<LendResponse[]>([]);
   const [incoming, setIncoming] = useState<LendResponse[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterChip>('All');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('recent');
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -44,37 +46,52 @@ export default function LendsScreen() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const list = tab === 'Lent' ? lends : incoming;
-  const filtered = list.filter((l) => statusMap[activeFilter].includes(l.status));
+  const filtered = list
+    .filter((l) => statusMap[activeFilter].includes(l.status))
+    .sort((a, b) =>
+      sortOrder === 'due'
+        ? new Date(a.due).getTime() - new Date(b.due).getTime()
+        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.wrapper}>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Header — scrolls with content */}
-          <View style={styles.header}>
-            <View style={styles.headerRow}>
-              <View>
-                <Text style={styles.title}>My Lends</Text>
-                <Text style={styles.subtitle}>
-                  {filtered.length} records
-                </Text>
-              </View>
-            </View>
-
-            {/* Direction Tabs */}
-            <View style={styles.tabRow}>
-              {(['Lent', 'Borrowed'] as DirectionTab[]).map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.tabBtn, tab === t && styles.tabBtnActive]}
-                  onPress={() => setTab(t)}
-                >
-                  <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{t}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Yellow header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>My Lends</Text>
+          <Text style={styles.subtitle}>{filtered.length} records</Text>
+          <View style={styles.tabRow}>
+            {(['Lent', 'Borrowed'] as DirectionTab[]).map((t) => (
+              <TouchableOpacity
+                key={t}
+                style={[styles.tabBtn, tab === t && styles.tabBtnActive]}
+                onPress={() => setTab(t)}
+              >
+                <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{t}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
+          <View style={styles.sortRow}>
+            <Ionicons name="funnel-outline" size={13} color="rgba(255,255,255,0.7)" />
+            <TouchableOpacity
+              style={[styles.sortBtn, sortOrder === 'due' && styles.sortBtnActive]}
+              onPress={() => setSortOrder('due')}
+            >
+              <Text style={[styles.sortText, sortOrder === 'due' && styles.sortTextActive]}>Earliest</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.sortBtn, sortOrder === 'recent' && styles.sortBtnActive]}
+              onPress={() => setSortOrder('recent')}
+            >
+              <Text style={[styles.sortText, sortOrder === 'recent' && styles.sortTextActive]}>Recent</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Gray rounded body */}
+        <View style={styles.body}>
           {loading ? (
             <View style={styles.center}>
               <ActivityIndicator size="large" color={Colors.primary} />
@@ -124,23 +141,27 @@ export default function LendsScreen() {
               </View>
             </>
           )}
-        </ScrollView>
-
-      </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.background },
-  wrapper: { flex: 1 },
+  safeArea: { flex: 1, backgroundColor: Colors.primary },
+  scroll: { flex: 1, backgroundColor: Colors.primary },
+  scrollContent: { flexGrow: 1 },
   header: {
-    marginHorizontal: 16, marginTop: 8, paddingHorizontal: 20,
-    paddingTop: 16, paddingBottom: 16, backgroundColor: Colors.primary, borderRadius: 28,
+    paddingHorizontal: 20, paddingTop: 24, paddingBottom: 28,
+    backgroundColor: Colors.primary,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  title: { fontSize: 26, fontWeight: '800', color: '#FFFFFF' },
-  subtitle: { fontSize: 13, color: '#FFFFFF', opacity: 0.75, marginTop: 2 },
+  body: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    overflow: 'hidden', flexGrow: 1, paddingBottom: 40,
+  },
+  title: { fontSize: 26, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 },
+  subtitle: { fontSize: 13, color: '#FFFFFF', opacity: 0.75, marginBottom: 18 },
   tabRow: { flexDirection: 'row', gap: 8 },
   tabBtn: {
     flex: 1, paddingVertical: 8, borderRadius: 12,
@@ -149,6 +170,11 @@ const styles = StyleSheet.create({
   tabBtnActive: { backgroundColor: '#FFFFFF' },
   tabText: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
   tabTextActive: { color: Colors.primary },
+  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+  sortBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.15)' },
+  sortBtnActive: { backgroundColor: '#FFFFFF' },
+  sortText: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
+  sortTextActive: { color: Colors.primary },
   center: { paddingVertical: 60, alignItems: 'center' },
   px: { paddingHorizontal: 20, paddingBottom: 24 },
   chipsRow: { paddingHorizontal: 20, paddingVertical: 16, gap: 8 },

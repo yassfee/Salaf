@@ -61,6 +61,18 @@ public class RepaymentService {
             throw new IllegalArgumentException("Amount paid exceeds remaining balance");
         }
 
+        // Check borrower has sufficient wallet balance
+        Wallet borrowerWallet = walletRepository.findByUser(currentUser).orElseGet(() -> {
+            Wallet w = new Wallet();
+            w.setUser(currentUser);
+            return walletRepository.save(w);
+        });
+        if (borrowerWallet.getBalance().compareTo(request.getAmountPaid()) < 0) {
+            throw new IllegalArgumentException("Insufficient balance. You have "
+                + borrowerWallet.getBalance().toPlainString() + " BD but need "
+                + request.getAmountPaid().toPlainString() + " BD.");
+        }
+
         // Create and save repayment
         Repayment repayment = new Repayment();
         repayment.setLendRequest(lendRequest);

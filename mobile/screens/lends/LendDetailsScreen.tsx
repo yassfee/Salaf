@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Modal, TextInput, Alert, ActivityIndicator,
@@ -25,6 +25,14 @@ export default function LendDetailsScreen() {
   const [repayAmount, setRepayAmount] = useState('');
   const [repayNote, setRepayNote] = useState('');
   const [repayLoading, setRepayLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [errorVisible, setErrorVisible] = useState(false);
+
+  const showError = useCallback((msg: string) => {
+    setErrorMsg(msg);
+    setErrorVisible(true);
+    setTimeout(() => setErrorVisible(false), 4000);
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -167,6 +175,13 @@ export default function LendDetailsScreen() {
         </View>
       </ScrollView>
 
+      {errorVisible && !modalVisible && (
+        <View style={styles.errorToast}>
+          <Ionicons name="alert-circle" size={18} color={Colors.danger} />
+          <Text style={styles.errorToastText}>{errorMsg}</Text>
+        </View>
+      )}
+
       <View style={styles.bottomActions}>
         {isBorrowerView && lend.status !== 'PAID' && lend.status !== 'REJECTED' && lend.status !== 'PENDING' && (
           <PrimaryButton title="+ Record Repayment" onPress={() => setModalVisible(true)} />
@@ -205,7 +220,7 @@ export default function LendDetailsScreen() {
               onPress={async () => {
                 const amount = parseFloat(repayAmount);
                 if (!repayAmount || isNaN(amount) || amount <= 0) {
-                  Alert.alert('Invalid amount', 'Please enter a valid amount.');
+                  showError('Please enter a valid amount.');
                   return;
                 }
                 setRepayLoading(true);
@@ -218,7 +233,7 @@ export default function LendDetailsScreen() {
                   const updated = await fetch(lend.id);
                   setLend(updated);
                 } catch (e: any) {
-                  Alert.alert('Error', e?.response?.data?.message ?? 'Failed to record repayment.');
+                  showError(e?.response?.data?.message ?? 'Failed to record repayment.');
                 } finally {
                   setRepayLoading(false);
                 }
@@ -226,9 +241,18 @@ export default function LendDetailsScreen() {
             />
             <View style={styles.spacer} />
             <OutlinedButton title="Cancel" onPress={() => { setModalVisible(false); setRepayAmount(''); setRepayNote(''); }} />
+
+            {/* Error Toast inside modal so it appears above the overlay */}
+            {errorVisible && (
+              <View style={styles.modalErrorToast}>
+                <Ionicons name="alert-circle" size={18} color={Colors.danger} />
+                <Text style={styles.errorToastText}>{errorMsg}</Text>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
+
     </SafeAreaView>
   );
 }
@@ -289,4 +313,7 @@ const styles = StyleSheet.create({
   bdPrefix: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary, marginRight: 8 },
   modalInput: { flex: 1, fontSize: 20, fontWeight: '600', color: Colors.textPrimary },
   noteInput: { fontSize: 14, fontWeight: '400', borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 16, height: 48, marginBottom: 16 },
+  errorToast: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.dangerLight, borderRadius: 12, padding: 14, marginHorizontal: 20, marginBottom: 12, borderWidth: 1, borderColor: Colors.danger },
+  modalErrorToast: { marginTop: 16, backgroundColor: Colors.dangerLight, borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: Colors.danger },
+  errorToastText: { flex: 1, fontSize: 13, color: Colors.danger, fontWeight: '600' },
 });

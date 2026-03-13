@@ -93,31 +93,27 @@ export default function ContactsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Content */}
-      <View style={styles.contentArea}>
-        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          {/* Header — scrolls with content */}
-          <View style={styles.header}>
-            <View style={styles.headerRow}>
-              <View>
-                <Text style={styles.title}>My Contacts</Text>
-                <Text style={styles.subtitle}>
-                  {contacts.length} people · {contacts.filter(c => c.linkedUserId).length} on Salaf
-                </Text>
-              </View>
-            </View>
-            <View style={styles.searchWrapper}>
-              <Ionicons name="search-outline" size={17} color={Colors.textSecondary} style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search contacts..."
-                placeholderTextColor={Colors.textSecondary}
-                value={search}
-                onChangeText={setSearch}
-              />
-            </View>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
+        {/* Yellow header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>My Contacts</Text>
+          <Text style={styles.subtitle}>
+            {contacts.length} people · {contacts.filter(c => c.linkedUserId).length} on Salaf
+          </Text>
+          <View style={styles.searchWrapper}>
+            <Ionicons name="search-outline" size={17} color={Colors.textSecondary} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search contacts..."
+              placeholderTextColor={Colors.textSecondary}
+              value={search}
+              onChangeText={setSearch}
+            />
           </View>
+        </View>
 
+        {/* Gray rounded body */}
+        <View style={styles.body}>
           <View style={styles.list}>
             {loading ? (
               <View style={styles.center}>
@@ -140,11 +136,12 @@ export default function ContactsScreen() {
               </>
             )}
           </View>
-        </ScrollView>
-        <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-          <Ionicons name="add" size={28} color="#fff" />
-        </TouchableOpacity>
-      </View>
+        </View>
+      </ScrollView>
+
+      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
+        <Ionicons name="add" size={28} color="#fff" />
+      </TouchableOpacity>
 
       {/* Add Contact Modal — search by email/phone */}
       <Modal visible={modalVisible} transparent animationType="slide">
@@ -217,25 +214,22 @@ export default function ContactsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.background },
+  safeArea: { flex: 1, backgroundColor: Colors.primary },
+  scroll: { flex: 1, backgroundColor: Colors.primary },
+  scrollContent: { flexGrow: 1 },
   header: {
-    marginHorizontal: 16,
-    marginTop: 8,
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
+    paddingTop: 24,
+    paddingBottom: 28,
     backgroundColor: Colors.primary,
-    borderRadius: 28,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 18,
+  body: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    overflow: 'hidden', flexGrow: 1, paddingBottom: 40,
   },
-  title: { fontSize: 26, fontWeight: '800', color: '#FFFFFF' },
-  subtitle: { fontSize: 13, color: '#FFFFFF', opacity: 0.75, marginTop: 2 },
-  contentArea: { flex: 1 },
+  title: { fontSize: 26, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 },
+  subtitle: { fontSize: 13, color: '#FFFFFF', opacity: 0.75, marginBottom: 18 },
   fab: {
     position: 'absolute', bottom: 24, right: 24,
     width: 56, height: 56, borderRadius: 16,
@@ -249,7 +243,7 @@ const styles = StyleSheet.create({
   },
   searchIcon: { marginRight: 10 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
-  list: { paddingHorizontal: 20, paddingBottom: 24, paddingTop: 16 },
+  list: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24 },
   center: { paddingVertical: 60, alignItems: 'center' },
   empty: { paddingVertical: 40, alignItems: 'center' },
   emptyText: { fontSize: 14, color: Colors.textSecondary },

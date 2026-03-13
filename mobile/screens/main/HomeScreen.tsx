@@ -39,7 +39,7 @@ export default function HomeScreen() {
   // Toast
   const toastAnim = useRef(new Animated.Value(0)).current;
   const [toastVisible, setToastVisible] = useState(false);
-  const [toastType, setToastType] = useState<'1' | '2' | '3'>('1');
+  const [toastType, setToastType] = useState<'1' | '2' | '3' | '4'>('1');
 
   // Notify modal
   const [notifyVisible, setNotifyVisible] = useState(false);
@@ -98,9 +98,10 @@ export default function HomeScreen() {
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [requestsTab, setRequestsTab] = useState<'incoming' | 'borrow-requests'>('incoming');
   const [requestsAgreed, setRequestsAgreed] = useState<Record<number, boolean>>({});
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   // ── Toast ────────────────────────────────────────────────────────────────────
-  const showToast = useCallback((type: '1' | '2' | '3' = '1') => {
+  const showToast = useCallback((type: '1' | '2' | '3' | '4' = '1') => {
     setToastType(type);
     setToastVisible(true);
     Animated.sequence([
@@ -121,13 +122,15 @@ export default function HomeScreen() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [userR, sumR, dueR, lendsR, countR, walletR] = await Promise.allSettled([
+      const [userR, sumR, dueR, lendsR, countR, walletR, incomingR, borrowR] = await Promise.allSettled([
         getCurrentUser(),
         getDashboardSummary(),
         getDueSoon(),
         getLends(),
         getUnreadNotificationCount(),
         getWallet(),
+        getIncomingLends(),
+        getBorrowRequests(),
       ]);
       if (userR.status === 'fulfilled' && userR.value) setUserName(userR.value.name);
       if (sumR.status === 'fulfilled') setSummary(sumR.value);
@@ -135,6 +138,9 @@ export default function HomeScreen() {
       if (lendsR.status === 'fulfilled') setLends(lendsR.value);
       if (countR.status === 'fulfilled') setUnreadCount(countR.value);
       if (walletR.status === 'fulfilled') setWallet(walletR.value);
+      const incomingPending = incomingR.status === 'fulfilled' ? incomingR.value.filter((l) => l.status === 'PENDING').length : 0;
+      const borrowPending = borrowR.status === 'fulfilled' ? borrowR.value.filter((l) => l.status === 'BORROW_REQUESTED').length : 0;
+      setPendingRequestsCount(incomingPending + borrowPending);
     } finally {
       setLoading(false);
     }
@@ -169,6 +175,7 @@ export default function HomeScreen() {
       setNotifyVisible(false);
       setSelectedLendId(null);
       setNotifyNote('');
+      showToast('4');
     } catch (e: any) {
       Alert.alert('Error', e?.response?.data?.message ?? 'Failed to send notification.');
     } finally {
@@ -261,13 +268,17 @@ export default function HomeScreen() {
   };
 
   // ── Requests modal ───────────────────────────────────────────────────────────
-  const openRequests = async () => {
+  const openRequests = async (tab: 'incoming' | 'borrow-requests' = 'incoming') => {
+    setRequestsTab(tab);
     setRequestsVisible(true);
     setRequestsLoading(true);
     try {
       const [incoming, brReqs] = await Promise.all([getIncomingLends(), getBorrowRequests()]);
       setIncomingLends(incoming);
       setBorrowReqList(brReqs);
+      const incomingPending = incoming.filter((l) => l.status === 'PENDING').length;
+      const borrowPending = brReqs.filter((l) => l.status === 'BORROW_REQUESTED').length;
+      setPendingRequestsCount(incomingPending + borrowPending);
     } catch {
       Alert.alert('Error', 'Failed to load requests.');
     } finally {
@@ -458,14 +469,19 @@ export default function HomeScreen() {
               {/* Quick Actions */}
               <View style={styles.quickRow}>
                 {[
-                  { label: 'Notify',    icon: 'notifications-outline',    onPress: () => setNotifyVisible(true) },
-                  { label: 'Lend',      icon: 'arrow-up-outline',         onPress: openLend },
-                  { label: 'Borrow',    icon: 'arrow-down-outline',       onPress: openBorrow },
-                  { label: 'Requests',  icon: 'git-pull-request-outline', onPress: openRequests },
-                ].map(({ label, icon, onPress }) => (
+                  { label: 'Notify',    icon: 'notifications-outline',    onPress: () => setNotifyVisible(true),    badge: 0 },
+                  { label: 'Lend',      icon: 'arrow-up-outline',         onPress: openLend,                        badge: 0 },
+                  { label: 'Borrow',    icon: 'arrow-down-outline',       onPress: openBorrow,                      badge: 0 },
+                  { label: 'Requests',  icon: 'git-pull-request-outline', onPress: () => openRequests('incoming'),  badge: pendingRequestsCount },
+                ].map(({ label, icon, onPress, badge }) => (
                   <TouchableOpacity key={label} style={styles.quickItem} activeOpacity={0.8} onPress={onPress}>
                     <View style={styles.quickCircle}>
                       <Ionicons name={icon as any} size={22} color="#FFFFFF" />
+                      {badge > 0 && (
+                        <View style={styles.quickBadge}>
+                          <Text style={styles.quickBadgeText}>{badge > 9 ? '9+' : badge}</Text>
+                        </View>
+                      )}
                     </View>
                     <Text style={styles.quickLabel}>{label}</Text>
                   </TouchableOpacity>
@@ -511,10 +527,10 @@ export default function HomeScreen() {
           </View>
           <View style={styles.toastTextWrap}>
             <Text style={styles.toastTitle}>
-              {toastType === '3' ? 'Wallet saved!' : toastType === '2' ? 'Borrow request sent!' : 'Lend request sent!'}
+              {toastType === '4' ? 'Notification sent!' : toastType === '3' ? 'Wallet saved!' : toastType === '2' ? 'Borrow request sent!' : 'Lend request sent!'}
             </Text>
             <Text style={styles.toastSub}>
-              {toastType === '3' ? 'Your card and balance have been updated.' : toastType === '2' ? 'Waiting for the lender to approve.' : 'Waiting for the borrower to accept.'}
+              {toastType === '4' ? 'The borrower has been notified.' : toastType === '3' ? 'Your card and balance have been updated.' : toastType === '2' ? 'Waiting for the lender to approve.' : 'Waiting for the borrower to accept.'}
             </Text>
           </View>
         </Animated.View>
@@ -606,19 +622,24 @@ export default function HomeScreen() {
             </View>
             {notifLoading ? (
               <ActivityIndicator color={Colors.primary} style={{ marginVertical: 24 }} />
-            ) : notifications.length === 0 ? (
+            ) : notifications.filter((n) => !n.read).length === 0 ? (
               <Text style={styles.emptyNotif}>No new notifications.</Text>
             ) : (
               <ScrollView showsVerticalScrollIndicator={false}>
-                {notifications.slice(0, 5).map((n) => (
+                {notifications.filter((n) => !n.read).slice(0, 5).map((n) => (
                   <View key={n.id} style={[styles.notifCard, !n.read && styles.notifCardUnread]}>
                     <TouchableOpacity
                       style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}
                       activeOpacity={0.7}
-                      onPress={() => {
+                      onPress={async () => {
                         setBellVisible(false);
-                        if (n.type === 'BORROW_REQUEST') {
-                          router.push(`/lend-details?id=${n.lendId}`);
+                        try { await markNotificationRead(n.id); } catch { /* ignore */ }
+                        setNotifications((prev) => prev.map((x) => x.id === n.id ? { ...x, read: true } : x));
+                        if (!n.read) setUnreadCount((prev) => Math.max(0, prev - 1));
+                        if (n.type === 'LEND_REQUEST') {
+                          openRequests('incoming');
+                        } else if (n.type === 'BORROW_REQUEST') {
+                          openRequests('borrow-requests');
                         } else {
                           router.push(`/lend-details?id=${n.lendId}&incoming=true`);
                         }
@@ -646,12 +667,10 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.notifDismissBtn}
-                      onPress={async () => {
-                        try {
-                          await markNotificationRead(n.id);
-                          setNotifications((prev) => prev.filter((x) => x.id !== n.id));
-                          if (!n.read) setUnreadCount((prev) => Math.max(0, prev - 1));
-                        } catch { /* ignore */ }
+                      onPress={() => {
+                        setNotifications((prev) => prev.map((x) => x.id === n.id ? { ...x, read: true } : x));
+                        if (!n.read) setUnreadCount((prev) => Math.max(0, prev - 1));
+                        markNotificationRead(n.id).catch(() => {});
                       }}
                     >
                       <Ionicons name="checkmark" size={14} color={Colors.primary} />
@@ -1176,6 +1195,8 @@ const styles = StyleSheet.create({
   quickItem: { alignItems: 'center', gap: 8 },
   quickCircle: { width: 56, height: 56, borderRadius: 16, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 3 },
   quickLabel: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
+  quickBadge: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, borderWidth: 2, borderColor: Colors.background },
+  quickBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
   section: { paddingHorizontal: 20, marginBottom: 8 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: Colors.textPrimary },

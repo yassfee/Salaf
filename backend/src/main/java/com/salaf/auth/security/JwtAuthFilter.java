@@ -43,18 +43,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         // 3. Extract the token (strip "Bearer " prefix)
         final String token = authHeader.substring(7);
 
-        // 4. Extract the username (email) from the token
-        final String email = jwtService.extractUsername(token);
+        // 4-7. Extract username and authenticate — any token error (expired, malformed) is silently ignored
+        try {
+            final String email = jwtService.extractUsername(token);
 
-        // 5. Only authenticate if not already authenticated
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            try {
+            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                // 6. Validate token against the loaded user
                 if (jwtService.isTokenValid(token, userDetails)) {
-
-                    // 7. Build authentication token and set it in the security context
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
@@ -64,9 +60,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
-            } catch (Exception e) {
-                // Stale or invalid token — skip authentication, let the request proceed unauthenticated
             }
+        } catch (Exception e) {
+            // Expired or invalid token — skip authentication, let the request proceed unauthenticated
         }
 
         // 8. Continue the filter chain
