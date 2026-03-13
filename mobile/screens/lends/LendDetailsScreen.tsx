@@ -14,6 +14,7 @@ import ProgressBar from '../../components/ui/ProgressBar';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import OutlinedButton from '../../components/ui/OutlinedButton';
 import { getInitials, formatDate, formatCurrency } from '../../utils/formatCurrency';
+import { downloadReceipt } from '../../utils/pdfUtils';
 
 export default function LendDetailsScreen() {
   const router = useRouter();
@@ -68,6 +69,15 @@ export default function LendDetailsScreen() {
     { label: isBorrowerView ? 'Borrow Received' : 'Lend Created', date: formatDate(lend.createdAt), color: Colors.primary },
     { label: 'Due Date', date: formatDate(lend.due), color: Colors.danger },
   ];
+
+  const handleQuickDownload = async () => {
+    setDownloadingPdf(true);
+    try {
+      await downloadReceipt(lend.id, { showSuccessAlert: true, allowShare: false });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -188,7 +198,14 @@ export default function LendDetailsScreen() {
         )}
         <View style={styles.spacer} />
         <OutlinedButton
-          title="🧾 Download Receipt"
+          title={downloadingPdf ? "Downloading..." : "Quick Download"}
+          onPress={handleQuickDownload}
+          loading={downloadingPdf}
+          disabled={downloadingPdf}
+        />
+        <View style={styles.spacer} />
+        <OutlinedButton
+          title="View Receipt"
           onPress={() => router.push(`/receipt?lendId=${lend.id}`)}
         />
       </View>

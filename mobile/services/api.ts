@@ -16,11 +16,43 @@ const api = axios.create({
 });
 
 // Attach JWT token to every request
-api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+api.interceptors.request.use(
+  async (config) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+        console.log(`Adding token to ${config.method?.toUpperCase()} ${config.url}`);
+      } else {
+        console.log(`No token found for ${config.method?.toUpperCase()} ${config.url}`);
+      }
+    } catch (error) {
+      console.error('Error getting token from AsyncStorage:', error);
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Handle 403 errors (token expired/invalid)
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 403 || error.response?.status === 401) {
+      console.error(`${error.response.status} error for ${error.config?.url}:`, error.response?.data);
+      // Token is invalid, clear it
+      try {
+        await AsyncStorage.multiRemove(['token', 'user_name', 'user_email']);
+        console.log('Cleared invalid auth data');
+      } catch (e) {
+        console.error('Error clearing auth data:', e);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -97,12 +129,17 @@ export interface DueSoonLend {
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 export async function loginApi(email: string, password: string): Promise<AuthResponse> {
+  console.log('Attempting login for:', email);
   const res = await api.post<AuthResponse>('/api/auth/login', { email, password });
+  console.log('Login successful, storing token...');
+  
   await AsyncStorage.multiSet([
     ['token', res.data.token],
     ['user_name', res.data.name],
     ['user_email', res.data.email],
   ]);
+  
+  console.log('Token stored successfully');
   return res.data;
 }
 
@@ -402,6 +439,44 @@ export async function changePasswordApi(currentPassword: string, newPassword: st
 export async function deleteAccountApi(): Promise<void> {
   await api.delete('/api/auth/delete-account');
   await AsyncStorage.multiRemove(['token', 'user_name', 'user_email']);
+}
+
+// ── PDF Receipt ──────────────────────────────────────────────────────────────
+
+export async function downloadReceiptPdf(lendId: number): Promise<string> {
+  const token = await AsyncStorage.getItem('token');
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/pdf/receipt/${lendId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to download receipt: ${response.status}`);
+  }
+
+  const blob = await response.blob();
+  const reader = new FileReader();
+  
+  return new Promise((resolve, reject) => {
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+export async function getReceiptUrl(lendId: number): Promise<string> {
+  const token = await AsyncStorage.getItem('token');
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+  
+  return `${API_BASE_URL}/api/pdf/receipt/${lendId}?token=${encodeURIComponent(token)}`;
 }
 
 export default api;

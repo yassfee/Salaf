@@ -85,7 +85,7 @@ export default function AuthScreen() {
         >
           {/* Logo Area */}
           <View style={styles.logoArea}>
-            <Text style={styles.logoIcon}>💰</Text>
+            <Text style={styles.logoIcon}>$</Text>
             <Text style={styles.logoText}>LendWise</Text>
             <Text style={styles.logoSubtitle}>Smart Personal Lending</Text>
           </View>
