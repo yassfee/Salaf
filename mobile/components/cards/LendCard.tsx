@@ -1,15 +1,24 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Lend } from '../../types';
+import { LendStatus } from '../../types';
 import { Colors } from '../../constants/colors';
 import StatusBadge from '../ui/StatusBadge';
 import ProgressBar from '../ui/ProgressBar';
 import CardContainer from '../ui/CardContainer';
-import { getInitials, formatDate } from '../../utils/formatCurrency';
+import { formatDate } from '../../utils/formatCurrency';
+
+interface LendCardLend {
+  contact: string;
+  amount: number;
+  paid: number;
+  due: string;
+  status: LendStatus;
+  type: string;
+}
 
 interface LendCardProps {
-  lend: Lend;
+  lend: LendCardLend;
   onPress: () => void;
 }
 
