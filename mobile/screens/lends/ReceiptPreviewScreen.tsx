@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
-import { getLendById, getCurrentUser, LendResponse } from '../../services/api';
+import { getLendById, getIncomingLendById, getCurrentUser, LendResponse } from '../../services/api';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import OutlinedButton from '../../components/ui/OutlinedButton';
 import { formatDate, formatCurrency } from '../../utils/formatCurrency';
@@ -20,7 +20,8 @@ import { downloadReceipt } from '../../utils/pdfUtils';
 
 export default function ReceiptPreviewScreen() {
   const router = useRouter();
-  const { lendId } = useLocalSearchParams<{ lendId: string }>();
+  const { lendId, incoming } = useLocalSearchParams<{ lendId: string; incoming?: string }>();
+  const isBorrowerView = incoming === 'true';
   
   const [lend, setLend] = useState<LendResponse | null>(null);
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null);
@@ -30,8 +31,9 @@ export default function ReceiptPreviewScreen() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        const fetchLend = isBorrowerView ? getIncomingLendById : getLendById;
         const [lendData, userData] = await Promise.all([
-          getLendById(Number(lendId)),
+          fetchLend(Number(lendId)),
           getCurrentUser()
         ]);
         setLend(lendData);

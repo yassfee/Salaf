@@ -10,11 +10,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import InputField from '../../components/ui/InputField';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import OutlinedButton from '../../components/ui/OutlinedButton';
 import { loginApi, registerApi } from '../../services/api';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function AuthScreen() {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -30,43 +33,115 @@ export default function AuthScreen() {
 
   const router = useRouter();
 
-  const handleLogin = async () => {
+  // Clear a single field error as the user types
+  const clearError = (key: string) => {
+    if (errors[key]) setErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
+  };
+
+  // Reset all errors when switching tabs
+  const switchTab = (tab: 'login' | 'register') => {
+    setActiveTab(tab);
+    setErrors({});
+    setApiError('');
+  };
+
+  // ── Login ─────────────────────────────────────────────────────────────────
+
+  const validateLogin = (): Record<string, string> => {
     const errs: Record<string, string> = {};
-    if (!loginEmail) errs.loginEmail = 'Email is required';
+    const email = loginEmail.trim();
+    if (!email) errs.loginEmail = 'Email is required';
+    else if (!EMAIL_REGEX.test(email)) errs.loginEmail = 'Enter a valid email address';
     if (!loginPassword) errs.loginPassword = 'Password is required';
+    else if (loginPassword.length < 6) errs.loginPassword = 'Password must be at least 6 characters';
+    return errs;
+  };
+
+  const handleLogin = async () => {
+    const errs = validateLogin();
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
     setLoading(true);
     setApiError('');
     try {
-      await loginApi(loginEmail, loginPassword);
+      await loginApi(loginEmail.trim(), loginPassword);
       router.replace('/(tabs)');
     } catch (e: any) {
-      const msg = e?.response?.data?.message ?? e?.message ?? 'Login failed';
-      setApiError(msg);
+      const status = e?.response?.status;
+      if (status === 401 || status === 403) {
+        setApiError('Incorrect email or password. Please try again.');
+      } else if (status === 404) {
+        setApiError('No account found with this email.');
+      } else if (!e?.response) {
+        setApiError('Cannot reach the server. Check your connection.');
+      } else {
+        setApiError(e?.response?.data?.message ?? 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRegister = async () => {
+  // ── Register ──────────────────────────────────────────────────────────────
+
+  const validateRegister = (): Record<string, string> => {
     const errs: Record<string, string> = {};
-    if (!regName) errs.regName = 'Full name is required';
-    if (!regEmail) errs.regEmail = 'Email is required';
-    if (!regPassword) errs.regPassword = 'Password is required';
-    if (regPassword !== regConfirm) errs.regConfirm = 'Passwords do not match';
+    const name = regName.trim();
+    const email = regEmail.trim();
+
+    if (!name) {
+      errs.regName = 'Full name is required';
+    } else if (name.length < 2) {
+      errs.regName = 'Name must be at least 2 characters';
+    } else if (!/^[a-zA-Z\s'-]+$/.test(name)) {
+      errs.regName = 'Name can only contain letters, spaces, hyphens, and apostrophes';
+    }
+
+    if (!email) {
+      errs.regEmail = 'Email is required';
+    } else if (!EMAIL_REGEX.test(email)) {
+      errs.regEmail = 'Enter a valid email address';
+    }
+
+    if (!regPassword) {
+      errs.regPassword = 'Password is required';
+    } else if (regPassword.length < 8) {
+      errs.regPassword = 'Password must be at least 8 characters';
+    } else if (!/[A-Z]/.test(regPassword)) {
+      errs.regPassword = 'Password must contain at least one uppercase letter';
+    } else if (!/[0-9]/.test(regPassword)) {
+      errs.regPassword = 'Password must contain at least one number';
+    }
+
+    if (!regConfirm) {
+      errs.regConfirm = 'Please confirm your password';
+    } else if (regPassword !== regConfirm) {
+      errs.regConfirm = 'Passwords do not match';
+    }
+
+    return errs;
+  };
+
+  const handleRegister = async () => {
+    const errs = validateRegister();
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
     setLoading(true);
     setApiError('');
     try {
-      await registerApi(regName, regEmail, regPassword);
+      await registerApi(regName.trim(), regEmail.trim(), regPassword);
       router.replace('/(tabs)');
     } catch (e: any) {
-      const msg = e?.response?.data?.message ?? e?.message ?? 'Registration failed';
-      setApiError(msg);
+      const status = e?.response?.status;
+      if (status === 409) {
+        setApiError('An account with this email already exists.');
+      } else if (!e?.response) {
+        setApiError('Cannot reach the server. Check your connection.');
+      } else {
+        setApiError(e?.response?.data?.message ?? 'Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -86,7 +161,7 @@ export default function AuthScreen() {
           {/* Logo Area */}
           <View style={styles.logoArea}>
             <Text style={styles.logoIcon}>$</Text>
-            <Text style={styles.logoText}>LendWise</Text>
+            <Text style={styles.logoText}>Salaf</Text>
             <Text style={styles.logoSubtitle}>Smart Personal Lending</Text>
           </View>
 
@@ -94,7 +169,7 @@ export default function AuthScreen() {
           <View style={styles.tabToggle}>
             <TouchableOpacity
               style={[styles.tabBtn, activeTab === 'login' && styles.tabBtnActive]}
-              onPress={() => setActiveTab('login')}
+              onPress={() => switchTab('login')}
             >
               <Text style={[styles.tabBtnText, activeTab === 'login' && styles.tabBtnTextActive]}>
                 Login
@@ -102,7 +177,7 @@ export default function AuthScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.tabBtn, activeTab === 'register' && styles.tabBtnActive]}
-              onPress={() => setActiveTab('register')}
+              onPress={() => switchTab('register')}
             >
               <Text
                 style={[styles.tabBtnText, activeTab === 'register' && styles.tabBtnTextActive]}
@@ -115,6 +190,7 @@ export default function AuthScreen() {
           {/* API error banner */}
           {!!apiError && (
             <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={18} color={Colors.danger} />
               <Text style={styles.errorBannerText}>{apiError}</Text>
             </View>
           )}
@@ -127,17 +203,25 @@ export default function AuthScreen() {
                   placeholder="Email"
                   icon="mail-outline"
                   value={loginEmail}
-                  onChangeText={setLoginEmail}
+                  onChangeText={(v) => { setLoginEmail(v); clearError('loginEmail'); }}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="emailAddress"
+                  returnKeyType="next"
+                  maxLength={254}
                   error={errors.loginEmail}
                 />
                 <InputField
                   placeholder="Password"
                   icon="lock-closed-outline"
                   value={loginPassword}
-                  onChangeText={setLoginPassword}
+                  onChangeText={(v) => { setLoginPassword(v); clearError('loginPassword'); }}
                   isPassword
+                  textContentType="password"
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                  maxLength={128}
                   error={errors.loginPassword}
                 />
                 <TouchableOpacity style={styles.forgotRow}>
@@ -161,32 +245,51 @@ export default function AuthScreen() {
                   placeholder="Full Name"
                   icon="person-outline"
                   value={regName}
-                  onChangeText={setRegName}
+                  onChangeText={(v) => { setRegName(v); clearError('regName'); }}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  textContentType="name"
+                  returnKeyType="next"
+                  maxLength={80}
                   error={errors.regName}
                 />
                 <InputField
                   placeholder="Email"
                   icon="mail-outline"
                   value={regEmail}
-                  onChangeText={setRegEmail}
+                  onChangeText={(v) => { setRegEmail(v); clearError('regEmail'); }}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="emailAddress"
+                  returnKeyType="next"
+                  maxLength={254}
                   error={errors.regEmail}
                 />
                 <InputField
                   placeholder="Password"
                   icon="lock-closed-outline"
                   value={regPassword}
-                  onChangeText={setRegPassword}
+                  onChangeText={(v) => { setRegPassword(v); clearError('regPassword'); }}
                   isPassword
+                  textContentType="newPassword"
+                  returnKeyType="next"
+                  maxLength={128}
                   error={errors.regPassword}
                 />
+                {!!regPassword && !errors.regPassword && (
+                  <PasswordStrengthBar password={regPassword} />
+                )}
                 <InputField
                   placeholder="Confirm Password"
                   icon="lock-closed-outline"
                   value={regConfirm}
-                  onChangeText={setRegConfirm}
+                  onChangeText={(v) => { setRegConfirm(v); clearError('regConfirm'); }}
                   isPassword
+                  textContentType="newPassword"
+                  returnKeyType="done"
+                  onSubmitEditing={handleRegister}
+                  maxLength={128}
                   error={errors.regConfirm}
                 />
                 <PrimaryButton title="Create Account" onPress={handleRegister} loading={loading} disabled={loading} />
@@ -198,6 +301,66 @@ export default function AuthScreen() {
     </SafeAreaView>
   );
 }
+
+// ── Password strength indicator ───────────────────────────────────────────────
+
+function getStrength(pw: string): { level: 0 | 1 | 2 | 3; label: string; color: string } {
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^a-zA-Z0-9]/.test(pw)) score++;
+
+  if (score <= 1) return { level: 0, label: 'Weak', color: Colors.danger };
+  if (score === 2) return { level: 1, label: 'Fair', color: '#FB923C' };
+  if (score === 3) return { level: 2, label: 'Good', color: '#22C55E' };
+  return { level: 3, label: 'Strong', color: '#16A34A' };
+}
+
+function PasswordStrengthBar({ password }: { password: string }) {
+  const { level, label, color } = getStrength(password);
+  const filled = level + 1;
+  return (
+    <View style={strengthStyles.wrapper}>
+      <View style={strengthStyles.bars}>
+        {[0, 1, 2, 3].map((i) => (
+          <View
+            key={i}
+            style={[strengthStyles.bar, { backgroundColor: i < filled ? color : Colors.border }]}
+          />
+        ))}
+      </View>
+      <Text style={[strengthStyles.label, { color }]}>{label}</Text>
+    </View>
+  );
+}
+
+const strengthStyles = StyleSheet.create({
+  wrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: -6,
+    marginBottom: 12,
+    paddingHorizontal: 2,
+  },
+  bars: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  bar: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '600',
+    width: 44,
+    textAlign: 'right',
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -287,15 +450,20 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
   },
   errorBanner: {
-    backgroundColor: '#FEE2E2',
-    borderRadius: 10,
-    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: Colors.dangerLight,
+    borderRadius: 12,
+    padding: 14,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.danger,
   },
   errorBannerText: {
-    color: '#B91C1C',
+    flex: 1,
+    color: Colors.danger,
     fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
+    fontWeight: '600',
   },
 });

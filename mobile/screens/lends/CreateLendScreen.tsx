@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, TextInput, ActivityIndicator,
+  Alert, TextInput, ActivityIndicator, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -28,6 +28,8 @@ export default function CreateLendScreen() {
   const [agreed, setAgreed] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [errorVisible, setErrorVisible] = useState(false);
+  const [balanceErrorMsg, setBalanceErrorMsg] = useState('');
+  const [balanceErrorVisible, setBalanceErrorVisible] = useState(false);
 
   const showError = useCallback((msg: string) => {
     setErrorMsg(msg);
@@ -62,7 +64,12 @@ export default function CreateLendScreen() {
       router.replace({ pathname: '/(tabs)', params: { toast: '1' } } as any);
     } catch (e: any) {
       const msg = e?.response?.data?.message ?? 'Failed to create lend.';
-      showError(msg);
+      if (msg.toLowerCase().includes('insufficient balance')) {
+        setBalanceErrorMsg(msg);
+        setBalanceErrorVisible(true);
+      } else {
+        showError(msg);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -191,6 +198,25 @@ export default function CreateLendScreen() {
           <View style={styles.spacerSm} />
         </View>
       </ScrollView>
+
+      {/* Insufficient Balance Modal */}
+      <Modal visible={balanceErrorVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <View style={styles.modalIconWrap}>
+              <Ionicons name="wallet-outline" size={32} color={Colors.danger} />
+            </View>
+            <Text style={styles.modalTitle}>Insufficient Balance</Text>
+            <Text style={styles.modalMsg}>{balanceErrorMsg}</Text>
+            <TouchableOpacity
+              style={styles.modalBtn}
+              onPress={() => setBalanceErrorVisible(false)}
+            >
+              <Text style={styles.modalBtnText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -236,4 +262,11 @@ const styles = StyleSheet.create({
   agreementText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
   errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.dangerLight, borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: Colors.danger },
   errorBannerText: { flex: 1, fontSize: 13, color: Colors.danger, fontWeight: '600' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalBox: { backgroundColor: Colors.card, borderRadius: 20, padding: 28, width: '100%', maxWidth: 360, alignItems: 'center' },
+  modalIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.dangerLight, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 10, textAlign: 'center' },
+  modalMsg: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  modalBtn: { backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 40 },
+  modalBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, TextInput, Alert, ActivityIndicator,
+  TextInput, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -9,12 +9,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { getLendById, getIncomingLendById, recordRepayment, LendResponse } from '../../services/api';
 import CardContainer from '../../components/ui/CardContainer';
+import DraggableSheet from '../../components/ui/DraggableSheet';
 import StatusBadge from '../../components/ui/StatusBadge';
 import ProgressBar from '../../components/ui/ProgressBar';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import OutlinedButton from '../../components/ui/OutlinedButton';
 import { getInitials, formatDate, formatCurrency } from '../../utils/formatCurrency';
-import { downloadReceipt } from '../../utils/pdfUtils';
 
 export default function LendDetailsScreen() {
   const router = useRouter();
@@ -32,7 +32,6 @@ export default function LendDetailsScreen() {
   const showError = useCallback((msg: string) => {
     setErrorMsg(msg);
     setErrorVisible(true);
-    setTimeout(() => setErrorVisible(false), 4000);
   }, []);
 
   useEffect(() => {
@@ -69,15 +68,6 @@ export default function LendDetailsScreen() {
     { label: isBorrowerView ? 'Borrow Received' : 'Lend Created', date: formatDate(lend.createdAt), color: Colors.primary },
     { label: 'Due Date', date: formatDate(lend.due), color: Colors.danger },
   ];
-
-  const handleQuickDownload = async () => {
-    setDownloadingPdf(true);
-    try {
-      await downloadReceipt(lend.id, { showSuccessAlert: true, allowShare: false });
-    } finally {
-      setDownloadingPdf(false);
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -198,77 +188,69 @@ export default function LendDetailsScreen() {
         )}
         <View style={styles.spacer} />
         <OutlinedButton
-          title={downloadingPdf ? "Downloading..." : "Quick Download"}
-          onPress={handleQuickDownload}
-          loading={downloadingPdf}
-          disabled={downloadingPdf}
-        />
-        <View style={styles.spacer} />
-        <OutlinedButton
-          title="View Receipt"
-          onPress={() => router.push(`/receipt?lendId=${lend.id}`)}
+          title="🧾 Download Receipt"
+          onPress={() => router.push(`/receipt?lendId=${lend.id}${isBorrowerView ? '&incoming=true' : ''}`)}
         />
       </View>
 
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Record Repayment</Text>
-            <View style={styles.inputRow}>
-              <Text style={styles.bdPrefix}>BD</Text>
-              <TextInput
-                style={styles.modalInput}
-                keyboardType="decimal-pad"
-                placeholder="0.000"
-                value={repayAmount}
-                onChangeText={setRepayAmount}
-                placeholderTextColor={Colors.textSecondary}
-              />
-            </View>
-            <TextInput
-              style={[styles.modalInput, styles.noteInput]}
-              placeholder="Note (optional)"
-              value={repayNote}
-              onChangeText={setRepayNote}
-              placeholderTextColor={Colors.textSecondary}
-            />
-            <PrimaryButton
-              title={repayLoading ? 'Recording...' : 'Record'}
-              onPress={async () => {
-                const amount = parseFloat(repayAmount);
-                if (!repayAmount || isNaN(amount) || amount <= 0) {
-                  showError('Please enter a valid amount.');
-                  return;
-                }
-                setRepayLoading(true);
-                try {
-                  await recordRepayment(lend.id, amount, repayNote || undefined);
-                  setModalVisible(false);
-                  setRepayAmount('');
-                  setRepayNote('');
-                  const fetch = isBorrowerView ? getIncomingLendById : getLendById;
-                  const updated = await fetch(lend.id);
-                  setLend(updated);
-                } catch (e: any) {
-                  showError(e?.response?.data?.message ?? 'Failed to record repayment.');
-                } finally {
-                  setRepayLoading(false);
-                }
-              }}
-            />
-            <View style={styles.spacer} />
-            <OutlinedButton title="Cancel" onPress={() => { setModalVisible(false); setRepayAmount(''); setRepayNote(''); }} />
-
-            {/* Error Toast inside modal so it appears above the overlay */}
-            {errorVisible && (
-              <View style={styles.modalErrorToast}>
-                <Ionicons name="alert-circle" size={18} color={Colors.danger} />
-                <Text style={styles.errorToastText}>{errorMsg}</Text>
-              </View>
-            )}
-          </View>
+      <DraggableSheet
+        visible={modalVisible}
+        onClose={() => { setModalVisible(false); setRepayAmount(''); setRepayNote(''); setErrorVisible(false); }}
+      >
+        <Text style={styles.modalTitle}>Record Repayment</Text>
+        <View style={styles.inputRow}>
+          <Text style={styles.bdPrefix}>BD</Text>
+          <TextInput
+            style={styles.modalInput}
+            keyboardType="decimal-pad"
+            placeholder="0.000"
+            value={repayAmount}
+            onChangeText={setRepayAmount}
+            placeholderTextColor={Colors.textSecondary}
+          />
         </View>
-      </Modal>
+        <TextInput
+          style={[styles.modalInput, styles.noteInput]}
+          placeholder="Note (optional)"
+          value={repayNote}
+          onChangeText={setRepayNote}
+          placeholderTextColor={Colors.textSecondary}
+        />
+        <PrimaryButton
+          title={repayLoading ? 'Recording...' : 'Record'}
+          onPress={async () => {
+            const amount = parseFloat(repayAmount);
+            if (!repayAmount || isNaN(amount) || amount <= 0) {
+              showError('Please enter a valid amount.');
+              return;
+            }
+            setRepayLoading(true);
+            try {
+              await recordRepayment(lend.id, amount, repayNote || undefined);
+              setModalVisible(false);
+              setRepayAmount('');
+              setRepayNote('');
+              setErrorVisible(false);
+              const fetch = isBorrowerView ? getIncomingLendById : getLendById;
+              const updated = await fetch(lend.id);
+              setLend(updated);
+            } catch (e: any) {
+              showError(e?.response?.data?.message ?? 'Failed to record repayment.');
+            } finally {
+              setRepayLoading(false);
+            }
+          }}
+        />
+        <View style={styles.spacer} />
+        <OutlinedButton title="Cancel" onPress={() => { setModalVisible(false); setRepayAmount(''); setRepayNote(''); setErrorVisible(false); }} />
+
+        {errorVisible && (
+          <View style={styles.modalErrorToast}>
+            <Ionicons name="alert-circle" size={18} color={Colors.danger} />
+            <Text style={styles.errorToastText}>{errorMsg}</Text>
+          </View>
+        )}
+      </DraggableSheet>
 
     </SafeAreaView>
   );

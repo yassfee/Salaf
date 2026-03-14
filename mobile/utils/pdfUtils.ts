@@ -5,7 +5,7 @@ import * as Clipboard from 'expo-clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { showSuccessToast, showErrorToast, showClipboardSuccess } from './toast';
 
-const API_BASE_URL = Platform.OS === 'web' ? 'http://localhost:8080' : 'http://10.0.2.2:8080';
+const API_BASE_URL = Platform.OS === 'web' ? 'http://localhost:8080' : 'http://192.168.0.205:8080';
 
 export interface DownloadOptions {
   showSuccessAlert?: boolean;

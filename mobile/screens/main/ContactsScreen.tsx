@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Modal,
   Alert,
   ActivityIndicator,
 } from 'react-native';
@@ -16,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { getContacts, createContact, searchUsers, ContactResponse, UserSearchResult } from '../../services/api';
 import ContactCard from '../../components/cards/ContactCard';
+import DraggableSheet from '../../components/ui/DraggableSheet';
 
 export default function ContactsScreen() {
   const router = useRouter();
@@ -29,6 +29,7 @@ export default function ContactsScreen() {
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState('');
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
@@ -56,7 +57,7 @@ export default function ContactsScreen() {
       const results = await searchUsers(q.trim());
       setSearchResults(results);
     } catch {
-      Alert.alert('Error', 'Failed to search users.');
+      // ignore search errors silently
     } finally {
       setSearching(false);
     }
@@ -64,21 +65,20 @@ export default function ContactsScreen() {
 
   const handleSearchQueryChange = (text: string) => {
     setSearchQuery(text);
+    setAddError('');
     if (searchTimer.current) clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => doSearch(text), 400);
   };
 
   const handleAddUser = async (user: UserSearchResult) => {
+    setAddError('');
     try {
       setSaving(true);
       const created = await createContact(user.email);
       setContacts((prev) => [created, ...prev]);
-      setModalVisible(false);
-      setSearchQuery('');
-      setSearchResults([]);
+      closeModal();
     } catch (e: any) {
-      const msg = e?.response?.data?.message ?? 'Failed to add contact.';
-      Alert.alert('Error', msg);
+      setAddError(e?.response?.data?.message ?? 'Failed to add contact.');
     } finally {
       setSaving(false);
     }
@@ -88,6 +88,7 @@ export default function ContactsScreen() {
     setModalVisible(false);
     setSearchQuery('');
     setSearchResults([]);
+    setAddError('');
     if (searchTimer.current) clearTimeout(searchTimer.current);
   };
 
@@ -144,71 +145,74 @@ export default function ContactsScreen() {
       </TouchableOpacity>
 
       {/* Add Contact Modal — search by email/phone */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Add Contact</Text>
-            <Text style={styles.modalHint}>Search for a registered user by email or phone</Text>
+      <DraggableSheet visible={modalVisible} onClose={closeModal} sheetStyle={{ maxHeight: '80%' }}>
+        <Text style={styles.modalTitle}>Add Contact</Text>
+        <Text style={styles.modalHint}>Search for a registered Salaf user by email or phone</Text>
 
-            <View style={styles.searchRow}>
-              <TextInput
-                style={styles.searchField}
-                placeholder="Email or phone number..."
-                placeholderTextColor={Colors.textSecondary}
-                value={searchQuery}
-                onChangeText={handleSearchQueryChange}
-                autoCapitalize="none"
-                keyboardType="default"
-                returnKeyType="search"
-                autoCorrect={false}
-              />
-              {searching && (
-                <View style={styles.searchingIndicator}>
-                  <ActivityIndicator size="small" color={Colors.primary} />
-                </View>
-              )}
-            </View>
-
-            {searchResults.length > 0 && (
-              <ScrollView style={styles.results} showsVerticalScrollIndicator={false}>
-                {searchResults.map((user) => (
-                  <TouchableOpacity
-                    key={user.id}
-                    style={styles.resultItem}
-                    onPress={() => handleAddUser(user)}
-                    disabled={saving}
-                  >
-                    <View style={styles.resultAvatar}>
-                      <Text style={styles.resultAvatarText}>
-                        {user.name.split(' ').map((p) => p[0]).join('').toUpperCase().slice(0, 2)}
-                      </Text>
-                    </View>
-                    <View style={styles.resultInfo}>
-                      <Text style={styles.resultName}>{user.name}</Text>
-                      <Text style={styles.resultEmail}>{user.email}</Text>
-                    </View>
-                    <View style={styles.addCircle}>
-                      {saving ? (
-                        <ActivityIndicator size="small" color={Colors.primary} />
-                      ) : (
-                        <Ionicons name="person-add-outline" size={18} color={Colors.primary} />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-
-            {searchResults.length === 0 && searchQuery.trim().length >= 2 && !searching && (
-              <Text style={styles.noResults}>No users found. Make sure they are registered.</Text>
-            )}
-
-            <TouchableOpacity style={styles.cancelBtn} onPress={closeModal}>
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.searchRow}>
+          <Ionicons name="search-outline" size={18} color={Colors.textSecondary} style={styles.searchRowIcon} />
+          <TextInput
+            style={styles.searchField}
+            placeholder="Email or phone number..."
+            placeholderTextColor={Colors.textSecondary}
+            value={searchQuery}
+            onChangeText={handleSearchQueryChange}
+            autoCapitalize="none"
+            keyboardType="default"
+            returnKeyType="search"
+            autoCorrect={false}
+          />
+          {searching && (
+            <ActivityIndicator size="small" color={Colors.primary} style={styles.searchingIndicator} />
+          )}
         </View>
-      </Modal>
+
+        {addError ? (
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle" size={18} color={Colors.danger} />
+            <Text style={styles.errorText}>{addError}</Text>
+          </View>
+        ) : null}
+
+        {searchResults.length > 0 && (
+          <ScrollView style={styles.results} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            {searchResults.map((user) => (
+              <TouchableOpacity
+                key={user.id}
+                style={styles.resultItem}
+                onPress={() => handleAddUser(user)}
+                disabled={saving}
+                activeOpacity={0.75}
+              >
+                <View style={styles.resultAvatar}>
+                  <Text style={styles.resultAvatarText}>
+                    {user.name.split(' ').map((p) => p[0]).join('').toUpperCase().slice(0, 2)}
+                  </Text>
+                </View>
+                <View style={styles.resultInfo}>
+                  <Text style={styles.resultName}>{user.name}</Text>
+                  <Text style={styles.resultEmail}>{user.email}</Text>
+                </View>
+                <View style={styles.addCircle}>
+                  {saving ? (
+                    <ActivityIndicator size="small" color={Colors.primary} />
+                  ) : (
+                    <Ionicons name="person-add-outline" size={18} color={Colors.primary} />
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
+        {searchResults.length === 0 && searchQuery.trim().length >= 2 && !searching && (
+          <Text style={styles.noResults}>No users found. Make sure they are registered on Salaf.</Text>
+        )}
+
+        <TouchableOpacity style={styles.cancelBtn} onPress={closeModal}>
+          <Text style={styles.cancelBtnText}>Cancel</Text>
+        </TouchableOpacity>
+      </DraggableSheet>
     </SafeAreaView>
   );
 }
@@ -247,36 +251,42 @@ const styles = StyleSheet.create({
   center: { paddingVertical: 60, alignItems: 'center' },
   empty: { paddingVertical: 40, alignItems: 'center' },
   emptyText: { fontSize: 14, color: Colors.textSecondary },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalSheet: {
-    backgroundColor: Colors.card,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: 40, gap: 12, maxHeight: '80%',
+  // Modal
+  modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center', marginBottom: 4 },
+  modalHint: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', marginBottom: 16 },
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderColor: Colors.border, borderRadius: 12,
+    paddingHorizontal: 12, height: 50, backgroundColor: Colors.background,
+    marginBottom: 12,
   },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center' },
-  modalHint: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', marginTop: -4 },
-  searchRow: { flexDirection: 'row', alignItems: 'center' },
+  searchRowIcon: { marginRight: 8 },
   searchField: {
-    flex: 1, height: 48, borderWidth: 1, borderColor: Colors.border,
-    borderRadius: 12, paddingHorizontal: 14, fontSize: 14, color: Colors.textPrimary,
-    backgroundColor: Colors.background,
+    flex: 1, fontSize: 14, color: Colors.textPrimary,
   },
-  searchingIndicator: { position: 'absolute', right: 14 },
-  results: { maxHeight: 240 },
+  searchingIndicator: { marginLeft: 8 },
+  errorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.dangerLight, borderRadius: 12,
+    padding: 14, marginBottom: 12,
+    borderWidth: 1, borderColor: Colors.danger,
+  },
+  errorText: { flex: 1, fontSize: 13, color: Colors.danger, fontWeight: '600' },
+  results: { maxHeight: 220, marginBottom: 12 },
   resultItem: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border,
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   resultAvatar: {
-    width: 40, height: 40, borderRadius: 12,
+    width: 42, height: 42, borderRadius: 12,
     backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center',
   },
   resultAvatarText: { color: Colors.primary, fontWeight: '700', fontSize: 13 },
   resultInfo: { flex: 1 },
   resultName: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  resultEmail: { fontSize: 12, color: Colors.textSecondary, marginTop: 1 },
+  resultEmail: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   addCircle: { padding: 4 },
-  noResults: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', paddingVertical: 8 },
+  noResults: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', paddingVertical: 12, marginBottom: 4 },
   cancelBtn: {
     height: 52, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border,
     alignItems: 'center', justifyContent: 'center', marginTop: 4,

@@ -7,7 +7,7 @@ import { LendStatus } from '../types';
 const API_BASE_URL =
   Platform.OS === 'web'
     ? 'http://localhost:8080'
-    : 'http://10.0.2.2:8080';
+    : 'http://192.168.0.205:8080';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
