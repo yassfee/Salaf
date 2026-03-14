@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions,
-  ActivityIndicator, Animated, Modal, TextInput, Alert,
+  ActivityIndicator, Animated, TextInput, Alert, Pressable,
 } from 'react-native';
+import DraggableSheet from '../../components/ui/DraggableSheet';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,6 +48,7 @@ export default function HomeScreen() {
   const [notifyNote, setNotifyNote] = useState('');
   const [notifySending, setNotifySending] = useState(false);
   const [showLendPicker, setShowLendPicker] = useState(false);
+  const [notifyError, setNotifyError] = useState('');
 
   // Bell panel
   const [bellVisible, setBellVisible] = useState(false);
@@ -90,6 +92,9 @@ export default function HomeScreen() {
   const [borrowErrors, setBorrowErrors] = useState<Record<string, string>>({});
   const [borrowSubmitting, setBorrowSubmitting] = useState(false);
   const [borrowAgreed, setBorrowAgreed] = useState(false);
+  const [lendSubmitError, setLendSubmitError] = useState('');
+  const [borrowSubmitError, setBorrowSubmitError] = useState('');
+  const [activeBorrowCount, setActiveBorrowCount] = useState(0);
 
   // Requests modal
   const [requestsVisible, setRequestsVisible] = useState(false);
@@ -141,6 +146,9 @@ export default function HomeScreen() {
       const incomingPending = incomingR.status === 'fulfilled' ? incomingR.value.filter((l) => l.status === 'PENDING').length : 0;
       const borrowPending = borrowR.status === 'fulfilled' ? borrowR.value.filter((l) => l.status === 'BORROW_REQUESTED').length : 0;
       setPendingRequestsCount(incomingPending + borrowPending);
+      if (incomingR.status === 'fulfilled') {
+        setActiveBorrowCount(incomingR.value.filter((l) => ['ACCEPTED', 'ACTIVE', 'PARTIALLY_PAID', 'OVERDUE'].includes(l.status)).length);
+      }
     } finally {
       setLoading(false);
     }
@@ -167,17 +175,19 @@ export default function HomeScreen() {
   const selectedLend = notifiableLends.find((l) => l.id === selectedLendId);
 
   const handleSendNotification = async () => {
-    if (!selectedLendId) { Alert.alert('Select a lend', 'Please choose which lend to notify about.'); return; }
-    if (!notifyNote.trim()) { Alert.alert('Add a note', 'Please write a note for the borrower.'); return; }
+    if (!selectedLendId) { setNotifyError('Please select a lend to notify about.'); return; }
+    if (!notifyNote.trim()) { setNotifyError('Please write a note for the borrower.'); return; }
+    setNotifyError('');
     try {
       setNotifySending(true);
       await sendNotification(selectedLendId, notifyNote.trim());
       setNotifyVisible(false);
       setSelectedLendId(null);
       setNotifyNote('');
+      setNotifyError('');
       showToast('4');
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message ?? 'Failed to send notification.');
+      setNotifyError(e?.response?.data?.message ?? 'Failed to send notification.');
     } finally {
       setNotifySending(false);
     }
@@ -202,7 +212,7 @@ export default function HomeScreen() {
   const closeLend = () => {
     setLendVisible(false);
     setLendContact(null); setLendAmount(''); setLendDueDate('');
-    setLendNote(''); setLendPickerOpen(false); setLendErrors({}); setLendAgreed(false);
+    setLendNote(''); setLendPickerOpen(false); setLendErrors({}); setLendAgreed(false); setLendSubmitError('');
   };
   const lendChosenContact = formContacts.find((c) => c.id === lendContact);
 
@@ -226,7 +236,7 @@ export default function HomeScreen() {
       showToast('1');
     } catch (e: any) {
       const msg = e?.response?.data?.message ?? e?.message ?? 'Failed to create lend.';
-      Alert.alert('Error', msg);
+      setLendSubmitError(msg);
     } finally {
       setLendSubmitting(false);
     }
@@ -237,7 +247,7 @@ export default function HomeScreen() {
   const closeBorrow = () => {
     setBorrowVisible(false);
     setBorrowContact(null); setBorrowAmount(''); setBorrowDueDate('');
-    setBorrowNote(''); setBorrowPickerOpen(false); setBorrowErrors({}); setBorrowAgreed(false);
+    setBorrowNote(''); setBorrowPickerOpen(false); setBorrowErrors({}); setBorrowAgreed(false); setBorrowSubmitError('');
   };
   const borrowChosenContact = formContacts.find((c) => c.id === borrowContact);
 
@@ -252,6 +262,10 @@ export default function HomeScreen() {
   };
 
   const handleSubmitBorrow = async () => {
+    if (activeBorrowCount >= 3) {
+      setBorrowSubmitError('You have reached the limit of 3 active borrows. Please finish at least one before making a new request.');
+      return;
+    }
     if (!validateBorrow()) return;
     try {
       setBorrowSubmitting(true);
@@ -261,7 +275,7 @@ export default function HomeScreen() {
       showToast('2');
     } catch (e: any) {
       const msg = e?.response?.data?.message ?? e?.message ?? 'Failed to send borrow request.';
-      Alert.alert('Error', msg);
+      setBorrowSubmitError(msg);
     } finally {
       setBorrowSubmitting(false);
     }
@@ -537,9 +551,7 @@ export default function HomeScreen() {
       )}
 
       {/* ── Notify Modal ─────────────────────────────────────────────────────── */}
-      <Modal visible={notifyVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
+      <DraggableSheet visible={notifyVisible} onClose={() => { setNotifyVisible(false); setSelectedLendId(null); setNotifyNote(''); setShowLendPicker(false); setNotifyError(''); }}>
             <Text style={styles.modalTitle}>Notify Borrower</Text>
             <Text style={styles.modalHint}>Send a payment reminder with a personal note.</Text>
 
@@ -595,31 +607,28 @@ export default function HomeScreen() {
               textAlignVertical="top"
             />
 
+            {notifyError ? (
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle" size={18} color={Colors.danger} />
+                <Text style={styles.errorText}>{notifyError}</Text>
+              </View>
+            ) : null}
+
             <TouchableOpacity
               style={[styles.sendBtn, notifySending && { opacity: 0.6 }]}
               onPress={handleSendNotification}
               disabled={notifySending}
             >
-              <Ionicons name="send-outline" size={18} color="#fff" />
               <Text style={styles.sendBtnText}>{notifySending ? 'Sending...' : 'Send Notification'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setNotifyVisible(false); setSelectedLendId(null); setNotifyNote(''); setShowLendPicker(false); }}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setNotifyVisible(false); setSelectedLendId(null); setNotifyNote(''); setShowLendPicker(false); setNotifyError(''); }}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      </DraggableSheet>
 
       {/* ── Bell Panel ───────────────────────────────────────────────────────── */}
-      <Modal visible={bellVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { maxHeight: '80%' }]}>
-            <View style={styles.notifHeader}>
-              <Text style={styles.modalTitle}>Notifications</Text>
-              <TouchableOpacity onPress={() => setBellVisible(false)}>
-                <Ionicons name="close" size={22} color={Colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
+      <DraggableSheet visible={bellVisible} onClose={() => setBellVisible(false)} sheetStyle={{ maxHeight: '80%' }}>
+            <Text style={styles.modalTitle}>Notifications</Text>
             {notifLoading ? (
               <ActivityIndicator color={Colors.primary} style={{ marginVertical: 24 }} />
             ) : notifications.filter((n) => !n.read).length === 0 ? (
@@ -683,20 +692,17 @@ export default function HomeScreen() {
               <Text style={styles.viewAllText}>View All Notifications</Text>
               <Ionicons name="arrow-forward" size={16} color={Colors.primary} />
             </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      </DraggableSheet>
 
       {/* ── Lend Modal ───────────────────────────────────────────────────────── */}
-      <Modal visible={lendVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { maxHeight: '85%', paddingBottom: 0 }]}>
-            <View style={styles.notifHeader}>
-              <Text style={styles.modalTitle}>Create Lend</Text>
-              <TouchableOpacity onPress={closeLend}>
-                <Ionicons name="close" size={22} color={Colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
+      <DraggableSheet visible={lendVisible} onClose={closeLend} sheetStyle={{ maxHeight: '85%' }}>
+            <Text style={styles.modalTitle}>Create Lend</Text>
+            {lendSubmitError ? (
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle" size={18} color={Colors.danger} />
+                <Text style={styles.errorText}>{lendSubmitError}</Text>
+              </View>
+            ) : null}
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
               {/* Contact Selector */}
               {formContactsLoading ? (
@@ -801,20 +807,17 @@ export default function HomeScreen() {
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      </DraggableSheet>
 
       {/* ── Borrow Modal ─────────────────────────────────────────────────────── */}
-      <Modal visible={borrowVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { maxHeight: '85%', paddingBottom: 0 }]}>
-            <View style={styles.notifHeader}>
-              <Text style={styles.modalTitle}>Request to Borrow</Text>
-              <TouchableOpacity onPress={closeBorrow}>
-                <Ionicons name="close" size={22} color={Colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
+      <DraggableSheet visible={borrowVisible} onClose={closeBorrow} sheetStyle={{ maxHeight: '85%' }}>
+            <Text style={styles.modalTitle}>Request to Borrow</Text>
+            {borrowSubmitError ? (
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle" size={18} color={Colors.danger} />
+                <Text style={styles.errorText}>{borrowSubmitError}</Text>
+              </View>
+            ) : null}
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
               <Text style={styles.modalHint}>Select a contact. They will review and approve your request.</Text>
 
@@ -921,20 +924,11 @@ export default function HomeScreen() {
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      </DraggableSheet>
 
       {/* ── Wallet Modal ─────────────────────────────────────────────────────── */}
-      <Modal visible={walletModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { maxHeight: '85%', paddingBottom: 0 }]}>
-            <View style={styles.notifHeader}>
-              <Text style={styles.modalTitle}>Manage Wallet</Text>
-              <TouchableOpacity onPress={() => setWalletModalVisible(false)}>
-                <Ionicons name="close" size={22} color={Colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
+      <DraggableSheet visible={walletModalVisible} onClose={() => setWalletModalVisible(false)} sheetStyle={{ maxHeight: '85%' }}>
+            <Text style={styles.modalTitle}>Manage Wallet</Text>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
               <Text style={styles.modalHint}>Enter your card details and set your available balance.</Text>
 
@@ -1005,20 +999,11 @@ export default function HomeScreen() {
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      </DraggableSheet>
 
       {/* ── Requests Modal ───────────────────────────────────────────────────── */}
-      <Modal visible={requestsVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { maxHeight: '88%', paddingBottom: 24 }]}>
-            <View style={styles.notifHeader}>
-              <Text style={styles.modalTitle}>Requests</Text>
-              <TouchableOpacity onPress={closeRequests}>
-                <Ionicons name="close" size={22} color={Colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
+      <DraggableSheet visible={requestsVisible} onClose={closeRequests} sheetStyle={{ maxHeight: '88%', paddingBottom: 24 }}>
+            <Text style={styles.modalTitle}>Requests</Text>
 
             {/* Tabs */}
             <View style={styles.reqTabRow}>
@@ -1154,9 +1139,7 @@ export default function HomeScreen() {
                 )}
               </ScrollView>
             )}
-          </View>
-        </View>
-      </Modal>
+      </DraggableSheet>
     </SafeAreaView>
   );
 }
@@ -1216,8 +1199,9 @@ const styles = StyleSheet.create({
   toastTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   toastSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   // Modal base
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: Colors.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingTop: 12, paddingBottom: 40 },
+  dragHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.border, alignSelf: 'center', marginBottom: 16 },
   modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
   modalHint: { fontSize: 13, color: Colors.textSecondary, marginBottom: 14, marginTop: 4 },
   notifHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
@@ -1305,4 +1289,6 @@ const styles = StyleSheet.create({
   walletInputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 14, height: 52, backgroundColor: Colors.background },
   walletInput: { flex: 1, fontSize: 15, color: Colors.textPrimary },
   wBrandPill: { fontSize: 11, fontWeight: '700', color: Colors.primary, backgroundColor: Colors.primaryLight, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.dangerLight, borderRadius: 12, padding: 14, marginTop: 8, marginBottom: 4, borderWidth: 1, borderColor: Colors.danger },
+  errorText: { flex: 1, fontSize: 13, color: Colors.danger, fontWeight: '600' },
 });

@@ -1,15 +1,16 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Modal, TextInput,
+  ActivityIndicator, Alert, TextInput,
 } from 'react-native';
+import DraggableSheet from '../../components/ui/DraggableSheet';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import {
   getContacts, getLends, createLend, createBorrowRequest, getUserBadges,
-  ContactResponse, LendResponse, UserBadges,
+  getIncomingLends, ContactResponse, LendResponse, UserBadges,
 } from '../../services/api';
 import CardContainer from '../../components/ui/CardContainer';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -47,14 +48,17 @@ export default function ContactDetailsScreen() {
   const [borrowErrors, setBorrowErrors] = useState<Record<string, string>>({});
   const [borrowSubmitting, setBorrowSubmitting] = useState(false);
   const [borrowAgreed, setBorrowAgreed] = useState(false);
+  const [borrowSubmitError, setBorrowSubmitError] = useState('');
+  const [activeBorrowCount, setActiveBorrowCount] = useState(0);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [contacts, allLends] = await Promise.all([getContacts(), getLends()]);
+      const [contacts, allLends, incoming] = await Promise.all([getContacts(), getLends(), getIncomingLends().catch(() => [])]);
       const found = contacts.find((c) => c.id === contactId) ?? null;
       setContact(found);
       setLends(allLends.filter((l) => l.contactId === contactId));
+      setActiveBorrowCount(incoming.filter((l) => ['ACCEPTED', 'ACTIVE', 'PARTIALLY_PAID', 'OVERDUE'].includes(l.status)).length);
       if (found?.linkedUserId) {
         const badges = await getUserBadges(found.linkedUserId).catch(() => null);
         setContactBadges(badges);
@@ -101,7 +105,7 @@ export default function ContactDetailsScreen() {
   const closeBorrow = () => {
     setBorrowVisible(false);
     setBorrowAmount(''); setBorrowDueDate(''); setBorrowNote('');
-    setBorrowErrors({}); setBorrowAgreed(false);
+    setBorrowErrors({}); setBorrowAgreed(false); setBorrowSubmitError('');
   };
 
   const validateBorrow = () => {
@@ -114,6 +118,10 @@ export default function ContactDetailsScreen() {
   };
 
   const handleSubmitBorrow = async () => {
+    if (activeBorrowCount >= 3) {
+      setBorrowSubmitError('You have reached the limit of 3 active borrows. Please finish at least one before making a new request.');
+      return;
+    }
     if (!validateBorrow()) return;
     try {
       setBorrowSubmitting(true);
@@ -122,7 +130,7 @@ export default function ContactDetailsScreen() {
       await load();
     } catch (e: any) {
       const msg = e?.response?.data?.message ?? e?.message ?? 'Failed to send borrow request.';
-      Alert.alert('Error', msg);
+      setBorrowSubmitError(msg);
     } finally {
       setBorrowSubmitting(false);
     }
@@ -292,15 +300,15 @@ export default function ContactDetailsScreen() {
         </View>
       </ScrollView>
       {/* ── Borrow Modal ───────────────────────────────────────────────────── */}
-      <Modal visible={borrowVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { maxHeight: '85%', paddingBottom: 0 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Request to Borrow</Text>
-              <TouchableOpacity onPress={closeBorrow}>
-                <Ionicons name="close" size={22} color={Colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
+      <DraggableSheet visible={borrowVisible} onClose={closeBorrow} sheetStyle={{ maxHeight: '85%' }}>
+            <Text style={styles.modalTitle}>Request to Borrow</Text>
+
+            {borrowSubmitError ? (
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle" size={18} color={Colors.danger} />
+                <Text style={styles.errorText}>{borrowSubmitError}</Text>
+              </View>
+            ) : null}
 
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
               {/* Contact (pre-selected, display only) */}
@@ -368,20 +376,11 @@ export default function ContactDetailsScreen() {
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      </DraggableSheet>
 
       {/* ── Lend Modal ─────────────────────────────────────────────────────── */}
-      <Modal visible={lendVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { maxHeight: '85%', paddingBottom: 0 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create Lend</Text>
-              <TouchableOpacity onPress={closeLend}>
-                <Ionicons name="close" size={22} color={Colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
+      <DraggableSheet visible={lendVisible} onClose={closeLend} sheetStyle={{ maxHeight: '85%' }}>
+            <Text style={styles.modalTitle}>Create Lend</Text>
 
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
               {/* Contact (pre-selected, display only) */}
@@ -449,9 +448,7 @@ export default function ContactDetailsScreen() {
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      </DraggableSheet>
     </SafeAreaView>
   );
 }
@@ -586,4 +583,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 6,
   },
   badgeChipText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.dangerLight, borderRadius: 12, padding: 14, marginTop: 8, marginBottom: 4, borderWidth: 1, borderColor: Colors.danger },
+  errorText: { flex: 1, fontSize: 13, color: Colors.danger, fontWeight: '600' },
 });
