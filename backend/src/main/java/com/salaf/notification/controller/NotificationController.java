@@ -1,6 +1,7 @@
 package com.salaf.notification.controller;
 
 import com.salaf.auth.entity.User;
+import com.salaf.common.AuthorizationService;
 import com.salaf.notification.dto.NotificationResponse;
 import com.salaf.notification.service.NotificationService;
 import org.springframework.http.HttpStatus;
@@ -16,9 +17,11 @@ import java.util.Map;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final AuthorizationService authorizationService;
 
-    public NotificationController(NotificationService notificationService) {
+    public NotificationController(NotificationService notificationService, AuthorizationService authorizationService) {
         this.notificationService = notificationService;
+        this.authorizationService = authorizationService;
     }
 
     /** Lender notifies borrower about a lend */
@@ -27,6 +30,10 @@ public class NotificationController {
             @PathVariable Long lendId,
             @RequestBody Map<String, String> body,
             @AuthenticationPrincipal User currentUser) {
+        
+        // Verify lender access to the lend
+        authorizationService.verifyLenderAccess(lendId, currentUser);
+        
         String note = body.get("note");
         NotificationResponse response = notificationService.sendNotification(lendId, note, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -44,6 +51,10 @@ public class NotificationController {
     public ResponseEntity<Void> markAsRead(
             @PathVariable Long id,
             @AuthenticationPrincipal User currentUser) {
+        
+        // Verify notification ownership
+        authorizationService.verifyNotificationAccess(id, currentUser);
+        
         notificationService.markAsRead(id, currentUser);
         return ResponseEntity.noContent().build();
     }
@@ -61,6 +72,10 @@ public class NotificationController {
     public ResponseEntity<Void> deleteNotification(
             @PathVariable Long id,
             @AuthenticationPrincipal User currentUser) {
+        
+        // Verify notification ownership
+        authorizationService.verifyNotificationAccess(id, currentUser);
+        
         notificationService.deleteNotification(id, currentUser);
         return ResponseEntity.noContent().build();
     }

@@ -1,12 +1,16 @@
 package com.salaf.auth.security;
 
 import com.salaf.auth.repository.UserRepository;
+import com.salaf.common.XSSProtectionFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
+import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -25,6 +29,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
     private final UserRepository userRepository;
@@ -73,10 +78,18 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*"));
+        // Restrict to specific origins in production
+        config.setAllowedOriginPatterns(List.of(
+            "http://localhost:*",
+            "https://localhost:*",
+            "http://127.0.0.1:*",
+            "https://127.0.0.1:*"
+            // Add your production domains here
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
         config.setAllowCredentials(true);
+        config.setMaxAge(3600L); // Cache preflight for 1 hour
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
@@ -87,7 +100,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   JwtAuthFilter jwtAuthFilter) throws Exception {
+                                                   JwtAuthFilter jwtAuthFilter,
+                                                   RateLimitingFilter rateLimitingFilter) throws Exception {
         http
             // Disable CSRF (stateless JWT — no session)
             .csrf(csrf -> csrf.disable())
@@ -95,9 +109,21 @@ public class SecurityConfig {
             // Enable CORS using the bean above
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
+            // Add security headers
+            .headers(headers -> headers
+                .frameOptions().deny()
+                .contentTypeOptions().and()
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .maxAgeInSeconds(31536000)
+                    .includeSubdomains(true))
+                .and()
+            )
+
             // Route permissions
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()            // register + login are public
+                .requestMatchers("/api/health").permitAll()             // basic health check is public
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")      // admin endpoints require ADMIN role
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // CORS preflight requests
                 .anyRequest().authenticated()                           // everything else requires JWT
             )
@@ -110,6 +136,10 @@ public class SecurityConfig {
             // Wire our DaoAuthenticationProvider
             .authenticationProvider(authenticationProvider())
 
+            // Add rate limiting filter first
+            .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
+            // Add XSS protection filter
+            .addFilterBefore(new XSSProtectionFilter(), rateLimitingFilter.getClass())
             // Run JwtAuthFilter before the default username/password filter
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

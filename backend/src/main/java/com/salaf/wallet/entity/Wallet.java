@@ -24,7 +24,8 @@ public class Wallet {
 
     private String last4;
     private String brand;
-    private String cardholderName;
+    @Column(name = "cardholder_name")
+    private String cardholderName; // This will be encrypted
     private Integer expiryMonth;
     private Integer expiryYear;
 }

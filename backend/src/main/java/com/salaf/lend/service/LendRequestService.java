@@ -1,6 +1,7 @@
 package com.salaf.lend.service;
 
 import com.salaf.auth.entity.User;
+import com.salaf.common.InputSanitizer;
 import com.salaf.contact.entity.Contact;
 import com.salaf.contact.repository.ContactRepository;
 import com.salaf.lend.dto.BorrowRequestDto;
@@ -15,6 +16,8 @@ import com.salaf.notification.repository.NotificationRepository;
 import com.salaf.wallet.entity.Wallet;
 import com.salaf.wallet.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,10 +30,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LendRequestService {
 
+    private static final Logger logger = LoggerFactory.getLogger(LendRequestService.class);
+    
     private final LendRequestRepository lendRequestRepository;
     private final ContactRepository contactRepository;
     private final NotificationRepository notificationRepository;
     private final WalletRepository walletRepository;
+    private final InputSanitizer inputSanitizer;
 
     private Wallet getOrCreateWallet(User user) {
         return walletRepository.findByUser(user).orElseGet(() -> {
@@ -62,16 +68,20 @@ public class LendRequestService {
 
         requireSufficientBalance(lender, req.getAmount());
 
+        // Sanitize note input
+        String sanitizedNote = inputSanitizer.sanitizeNote(req.getNote());
+
         LendRequest lend = new LendRequest();
         lend.setLender(lender);
         lend.setBorrower(borrower);
         lend.setAmount(req.getAmount());
         lend.setRemainingBalance(req.getAmount());
         lend.setDueDate(req.getDueDate());
-        lend.setNote(req.getNote());
+        lend.setNote(sanitizedNote);
         lend.setStatus(LendStatus.PENDING);
 
         LendRequest saved = lendRequestRepository.save(lend);
+        logger.info("Lend request created by user: {} for amount: {}", lender.getEmail(), req.getAmount());
 
         // Notify borrower if they have a linked user account
         if (borrower.getLinkedUser() != null) {
@@ -174,6 +184,9 @@ public class LendRequestService {
         }
         User lender = lenderContact.getLinkedUser();
 
+        // Sanitize note input
+        String sanitizedNote = inputSanitizer.sanitizeNote(dto.getNote());
+
         // Find or auto-create the borrower's contact entry in the lender's contact list
         Contact borrowerContact = contactRepository.findByOwnerAndLinkedUser(lender, borrower)
                 .orElseGet(() -> {
@@ -192,10 +205,11 @@ public class LendRequestService {
         lend.setAmount(dto.getAmount());
         lend.setRemainingBalance(dto.getAmount());
         lend.setDueDate(dto.getDueDate());
-        lend.setNote(dto.getNote());
+        lend.setNote(sanitizedNote);
         lend.setStatus(LendStatus.BORROW_REQUESTED);
 
         LendRequest savedBorrow = lendRequestRepository.save(lend);
+        logger.info("Borrow request created by user: {} for amount: {}", borrower.getEmail(), dto.getAmount());
 
         // Notify the lender about the borrow request
         Notification n = new Notification();

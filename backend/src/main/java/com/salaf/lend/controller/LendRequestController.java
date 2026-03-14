@@ -1,6 +1,7 @@
 package com.salaf.lend.controller;
 
 import com.salaf.auth.entity.User;
+import com.salaf.common.AuthorizationService;
 import com.salaf.lend.dto.BorrowRequestDto;
 import com.salaf.lend.dto.LendRequestDto;
 import com.salaf.lend.dto.LendResponseDto;
@@ -20,11 +21,16 @@ import java.util.List;
 public class LendRequestController {
 
     private final LendRequestService lendRequestService;
+    private final AuthorizationService authorizationService;
 
     @PostMapping
     public ResponseEntity<LendResponseDto> createLend(
             @Valid @RequestBody LendRequestDto request,
             @AuthenticationPrincipal User currentUser) {
+        
+        // Verify contact ownership before creating lend
+        authorizationService.verifyContactOwnership(request.getContactId(), currentUser);
+        
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(lendRequestService.createLend(request, currentUser));
     }
@@ -38,6 +44,10 @@ public class LendRequestController {
     public LendResponseDto getLendById(
             @PathVariable Long id,
             @AuthenticationPrincipal User currentUser) {
+        
+        // Verify access before returning lend details
+        authorizationService.verifyLendAccess(id, currentUser);
+        
         return lendRequestService.getLendById(id, currentUser);
     }
 
@@ -46,6 +56,10 @@ public class LendRequestController {
     public LendResponseDto accept(
             @PathVariable Long id,
             @AuthenticationPrincipal User currentUser) {
+        
+        // Verify borrower access
+        authorizationService.verifyBorrowerAccess(id, currentUser);
+        
         return lendRequestService.accept(id, currentUser);
     }
 
@@ -54,6 +68,10 @@ public class LendRequestController {
     public LendResponseDto reject(
             @PathVariable Long id,
             @AuthenticationPrincipal User currentUser) {
+        
+        // Verify borrower access
+        authorizationService.verifyBorrowerAccess(id, currentUser);
+        
         return lendRequestService.reject(id, currentUser);
     }
 
@@ -62,6 +80,10 @@ public class LendRequestController {
     public LendResponseDto cancel(
             @PathVariable Long id,
             @AuthenticationPrincipal User currentUser) {
+        
+        // Verify lender access
+        authorizationService.verifyLenderAccess(id, currentUser);
+        
         return lendRequestService.cancel(id, currentUser);
     }
 
@@ -76,6 +98,10 @@ public class LendRequestController {
     public LendResponseDto getIncomingLendById(
             @PathVariable Long id,
             @AuthenticationPrincipal User currentUser) {
+        
+        // Verify borrower access
+        authorizationService.verifyBorrowerAccess(id, currentUser);
+        
         return lendRequestService.getIncomingLendById(id, currentUser);
     }
 
@@ -84,6 +110,10 @@ public class LendRequestController {
     public ResponseEntity<LendResponseDto> createBorrowRequest(
             @Valid @RequestBody BorrowRequestDto request,
             @AuthenticationPrincipal User currentUser) {
+        
+        // Verify contact ownership before creating borrow request
+        authorizationService.verifyContactOwnership(request.getLenderContactId(), currentUser);
+        
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(lendRequestService.createBorrowRequest(currentUser, request));
     }
@@ -99,6 +129,10 @@ public class LendRequestController {
     public LendResponseDto approveBorrowRequest(
             @PathVariable Long id,
             @AuthenticationPrincipal User currentUser) {
+        
+        // Verify lender access
+        authorizationService.verifyLenderAccess(id, currentUser);
+        
         return lendRequestService.approveBorrowRequest(id, currentUser);
     }
 
@@ -107,6 +141,10 @@ public class LendRequestController {
     public LendResponseDto declineBorrowRequest(
             @PathVariable Long id,
             @AuthenticationPrincipal User currentUser) {
+        
+        // Verify lender access
+        authorizationService.verifyLenderAccess(id, currentUser);
+        
         return lendRequestService.declineBorrowRequest(id, currentUser);
     }
 }

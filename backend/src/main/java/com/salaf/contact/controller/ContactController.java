@@ -1,6 +1,7 @@
 package com.salaf.contact.controller;
 
 import com.salaf.auth.entity.User;
+import com.salaf.common.AuthorizationService;
 import com.salaf.contact.dto.ContactRequest;
 import com.salaf.contact.dto.ContactResponse;
 import com.salaf.contact.service.ContactService;
@@ -19,6 +20,7 @@ import java.util.List;
 public class ContactController {
 
     private final ContactService contactService;
+    private final AuthorizationService authorizationService;
 
     @GetMapping
     public List<ContactResponse> getAllContacts(@AuthenticationPrincipal User currentUser) {
@@ -37,6 +39,10 @@ public class ContactController {
     public ResponseEntity<Void> deleteContact(
             @PathVariable Long id,
             @AuthenticationPrincipal User currentUser) {
+        
+        // Verify authorization before deletion
+        authorizationService.verifyContactOwnership(id, currentUser);
+        
         contactService.deleteContact(id, currentUser);
         return ResponseEntity.noContent().build();
     }

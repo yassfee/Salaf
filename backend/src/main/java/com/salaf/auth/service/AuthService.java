@@ -7,8 +7,12 @@ import com.salaf.auth.dto.RegisterRequest;
 import com.salaf.auth.entity.User;
 import com.salaf.auth.repository.UserRepository;
 import com.salaf.auth.security.JwtService;
+import com.salaf.common.AuditService;
+import com.salaf.common.InputSanitizer;
 import com.salaf.lend.entity.LendStatus;
 import com.salaf.lend.repository.LendRequestRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,39 +25,61 @@ import java.util.List;
 @Service
 public class AuthService {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
+    
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final LendRequestRepository lendRequestRepository;
+    private final InputSanitizer inputSanitizer;
+    private final AuditService auditService;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
                        AuthenticationManager authenticationManager,
-                       LendRequestRepository lendRequestRepository) {
+                       LendRequestRepository lendRequestRepository,
+                       InputSanitizer inputSanitizer,
+                       AuditService auditService) {
         this.userRepository      = userRepository;
         this.passwordEncoder     = passwordEncoder;
         this.jwtService          = jwtService;
         this.authenticationManager = authenticationManager;
         this.lendRequestRepository = lendRequestRepository;
+        this.inputSanitizer = inputSanitizer;
+        this.auditService = auditService;
     }
 
     // ── Register (FR-1) ───────────────────────────────────────────────────────
 
     public AuthResponse register(RegisterRequest request) {
+        // Validate and sanitize inputs
+        if (!inputSanitizer.isValidEmail(request.getEmail())) {
+            throw new IllegalArgumentException("Invalid email format");
+        }
+        
+        if (!inputSanitizer.isValidPhoneNumber(request.getPhone())) {
+            throw new IllegalArgumentException("Invalid phone number format");
+        }
+        
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email already registered");
         }
 
+        String sanitizedName = inputSanitizer.sanitizeName(request.getName());
+        String sanitizedPhone = inputSanitizer.sanitizeText(request.getPhone());
+
         User user = User.builder()
-                .name(request.getName())
-                .email(request.getEmail())
+                .name(sanitizedName)
+                .email(request.getEmail().toLowerCase().trim())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .phone(request.getPhone())
+                .phone(sanitizedPhone)
                 .build();
 
         userRepository.save(user);
+        logger.info("New user registered: {}", request.getEmail());
+        auditService.logUserRegistration(request.getEmail());
 
         String token = jwtService.generateToken(user);
         return new AuthResponse(token, user.getName(), user.getEmail());
@@ -62,19 +88,33 @@ public class AuthService {
     // ── Login (FR-2) ──────────────────────────────────────────────────────────
 
     public AuthResponse login(LoginRequest request) {
-        // Throws BadCredentialsException if wrong credentials (Spring handles it)
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
-        );
+        // Validate email format
+        if (!inputSanitizer.isValidEmail(request.getEmail())) {
+            logger.warn("Invalid login attempt with malformed email: {}", request.getEmail());
+            throw new BadCredentialsException("Invalid credentials");
+        }
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        String email = request.getEmail().toLowerCase().trim();
+        
+        try {
+            // Throws BadCredentialsException if wrong credentials (Spring handles it)
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, request.getPassword())
+            );
 
-        String token = jwtService.generateToken(user);
-        return new AuthResponse(token, user.getName(), user.getEmail());
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+            logger.info("Successful login for user: {}", email);
+            auditService.logUserLogin(email, true);
+            String token = jwtService.generateToken(user);
+            return new AuthResponse(token, user.getName(), user.getEmail());
+            
+        } catch (BadCredentialsException e) {
+            logger.warn("Failed login attempt for email: {}", email);
+            auditService.logUserLogin(email, false);
+            throw e;
+        }
     }
 
     // ── Change Password ───────────────────────────────────────────────────────
@@ -84,11 +124,15 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            auditService.logSecurityEvent("INVALID_PASSWORD_CHANGE_ATTEMPT", userEmail, "Current password incorrect");
             throw new BadCredentialsException("Current password is incorrect");
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+        
+        logger.info("Password changed for user: {}", userEmail);
+        auditService.logPasswordChange(userEmail);
     }
 
     // ── Delete Account ────────────────────────────────────────────────────────
@@ -108,9 +152,12 @@ public class AuthService {
         );
 
         if (hasActiveLends) {
+            auditService.logSecurityEvent("ACCOUNT_DELETION_BLOCKED", userEmail, "Active lends exist");
             throw new IllegalStateException("Cannot delete account with active lends or pending requests");
         }
 
         userRepository.delete(user);
+        logger.warn("Account deleted for user: {}", userEmail);
+        auditService.logAccountDeletion(userEmail);
     }
 }
