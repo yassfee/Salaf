@@ -9,8 +9,10 @@ import com.salaf.auth.repository.UserRepository;
 import com.salaf.auth.security.JwtService;
 import com.salaf.common.AuditService;
 import com.salaf.common.InputSanitizer;
+import com.salaf.contact.repository.ContactRepository;
 import com.salaf.lend.entity.LendStatus;
 import com.salaf.lend.repository.LendRequestRepository;
+import com.salaf.wallet.repository.WalletRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -32,6 +34,8 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final LendRequestRepository lendRequestRepository;
+    private final WalletRepository walletRepository;
+    private final ContactRepository contactRepository;
     private final InputSanitizer inputSanitizer;
     private final AuditService auditService;
 
@@ -40,6 +44,8 @@ public class AuthService {
                        JwtService jwtService,
                        AuthenticationManager authenticationManager,
                        LendRequestRepository lendRequestRepository,
+                       WalletRepository walletRepository,
+                       ContactRepository contactRepository,
                        InputSanitizer inputSanitizer,
                        AuditService auditService) {
         this.userRepository      = userRepository;
@@ -47,6 +53,8 @@ public class AuthService {
         this.jwtService          = jwtService;
         this.authenticationManager = authenticationManager;
         this.lendRequestRepository = lendRequestRepository;
+        this.walletRepository = walletRepository;
+        this.contactRepository = contactRepository;
         this.inputSanitizer = inputSanitizer;
         this.auditService = auditService;
     }
@@ -65,6 +73,10 @@ public class AuthService {
         
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email already registered");
+        }
+
+        if (userRepository.findByPhone(request.getPhone()).isPresent()) {
+            throw new IllegalArgumentException("Phone number already registered");
         }
 
         String sanitizedName = inputSanitizer.sanitizeName(request.getName());
@@ -139,6 +151,8 @@ public class AuthService {
 
     @Transactional
     public void deleteAccount(String userEmail) {
+        logger.info("Starting account deletion process for user: {}", userEmail);
+        
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
@@ -152,12 +166,43 @@ public class AuthService {
         );
 
         if (hasActiveLends) {
+            logger.warn("Account deletion blocked for user: {} - Active lends exist", userEmail);
             auditService.logSecurityEvent("ACCOUNT_DELETION_BLOCKED", userEmail, "Active lends exist");
             throw new IllegalStateException("Cannot delete account with active lends or pending requests");
         }
 
-        userRepository.delete(user);
-        logger.warn("Account deleted for user: {}", userEmail);
-        auditService.logAccountDeletion(userEmail);
+        try {
+            logger.info("Cleaning up related data for user: {}", userEmail);
+            
+            // Delete user's wallet (if exists)
+            walletRepository.findByUser(user).ifPresent(wallet -> {
+                logger.info("Deleting wallet for user: {}", userEmail);
+                walletRepository.delete(wallet);
+            });
+            
+            // Delete contacts where user is the owner
+            logger.info("Deleting contacts owned by user: {}", userEmail);
+            contactRepository.findAllByOwner(user).forEach(contact -> {
+                contactRepository.delete(contact);
+            });
+            
+            // Update contacts where user is the linked user (set to null)
+            logger.info("Updating contacts that reference user: {}", userEmail);
+            contactRepository.findAllByLinkedUser(user).forEach(contact -> {
+                contact.setLinkedUser(null);
+                contactRepository.save(contact);
+            });
+            
+            // Now delete the user
+            logger.info("Deleting user account: {}", userEmail);
+            userRepository.delete(user);
+            
+            logger.warn("Account successfully deleted for user: {}", userEmail);
+            auditService.logAccountDeletion(userEmail);
+            
+        } catch (Exception e) {
+            logger.error("Failed to delete account for user: {} - Error: {}", userEmail, e.getMessage(), e);
+            throw new RuntimeException("Failed to delete account: " + e.getMessage());
+        }
     }
 }

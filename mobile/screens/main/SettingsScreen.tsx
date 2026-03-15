@@ -33,6 +33,8 @@ export default function SettingsScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const loadUserData = useCallback(async () => {
     try {
@@ -48,7 +50,10 @@ export default function SettingsScreen() {
       
       // Check if user has active lends (for delete account validation)
       if (summary) {
-        setHasActiveLends(summary.outstanding > 0 || summary.totalBorrowed > 0);
+        const hasActive = summary.outstanding > 0 || summary.totalBorrowed > 0 || summary.activeCount > 0;
+        setHasActiveLends(hasActive);
+      } else {
+        setHasActiveLends(false);
       }
     } catch (error) {
       console.error('Failed to load user data:', error);
@@ -99,26 +104,26 @@ export default function SettingsScreen() {
       return;
     }
 
-    Alert.alert(
-      'Delete Account',
-      'Are you sure you want to delete your account? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteAccountApi();
-              Alert.alert('Account Deleted', 'Your account has been successfully deleted.');
-              router.replace('/auth');
-            } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.message || 'Failed to delete account');
-            }
-          }
-        }
-      ]
-    );
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteAccount = async () => {
+    setShowDeleteConfirm(false);
+    setDeleteLoading(true);
+    
+    try {
+      await deleteAccountApi();
+      setDeleteLoading(false);
+      router.replace('/auth');
+      
+    } catch (error: any) {
+      console.error('Delete account error:', error);
+      setDeleteLoading(false);
+      Alert.alert(
+        'Error', 
+        error.response?.data?.message || error.message || 'Failed to delete account'
+      );
+    }
   };
 
   return (
@@ -194,23 +199,28 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>Danger Zone</Text>
           <View style={styles.settingCard}>
             <TouchableOpacity
-              style={[styles.settingRow, hasActiveLends && styles.settingRowDisabled]}
+              style={[
+                styles.settingRow, 
+                (hasActiveLends || deleteLoading) && styles.settingRowDisabled
+              ]}
               onPress={handleDeleteAccount}
-              disabled={hasActiveLends}
+              disabled={hasActiveLends || deleteLoading}
             >
               <View style={styles.settingLeft}>
                 <Ionicons 
                   name="trash-outline" 
                   size={24} 
-                  color={hasActiveLends ? Colors.textSecondary : Colors.danger} 
+                  color={(hasActiveLends || deleteLoading) ? Colors.textSecondary : Colors.danger} 
                 />
                 <View style={styles.settingText}>
-                  <Text style={[styles.settingLabel, hasActiveLends && styles.settingLabelDisabled]}>
-                    Delete Account
+                  <Text style={[styles.settingLabel, (hasActiveLends || deleteLoading) && styles.settingLabelDisabled]}>
+                    {deleteLoading ? 'Deleting Account...' : 'Delete Account'}
                   </Text>
                   <Text style={styles.settingDesc}>
                     {hasActiveLends 
                       ? 'Complete active lends first' 
+                      : deleteLoading
+                      ? 'Please wait...'
                       : 'Permanently delete your account'
                     }
                   </Text>
@@ -219,12 +229,53 @@ export default function SettingsScreen() {
               <Ionicons 
                 name="chevron-forward" 
                 size={20} 
-                color={hasActiveLends ? Colors.textSecondary : Colors.danger} 
+                color={(hasActiveLends || deleteLoading) ? Colors.textSecondary : Colors.danger} 
               />
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        visible={showDeleteConfirm}
+        animationType="fade"
+        transparent={true}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmationCard}>
+            <View style={styles.confirmationHeader}>
+              <Ionicons name="warning" size={48} color={Colors.danger} />
+              <Text style={styles.confirmationTitle}>Delete Account</Text>
+              <Text style={styles.confirmationMessage}>
+                Are you sure to delete the account
+              </Text>
+            </View>
+            
+            <View style={styles.confirmationActions}>
+              <TouchableOpacity
+                style={[styles.confirmationButton, styles.cancelButton]}
+                onPress={() => {
+                  console.log('🔴 User cancelled deletion');
+                  setShowDeleteConfirm(false);
+                }}
+              >
+                <Text style={styles.cancelButtonText}>No</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.confirmationButton, styles.deleteButton]}
+                onPress={confirmDeleteAccount}
+                disabled={deleteLoading}
+              >
+                <Text style={styles.deleteButtonText}>
+                  {deleteLoading ? 'Deleting...' : 'Yes'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Change Password Modal */}
       <Modal
@@ -431,5 +482,62 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     marginTop: 24,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  confirmationCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 320,
+  },
+  confirmationHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  confirmationTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  confirmationMessage: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  confirmationActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  confirmationButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: Colors.border,
+  },
+  deleteButton: {
+    backgroundColor: Colors.danger,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

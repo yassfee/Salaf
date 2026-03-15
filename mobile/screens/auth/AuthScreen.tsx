@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -24,6 +25,7 @@ export default function AuthScreen() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [regName, setRegName] = useState('');
+  const [regPhone, setRegPhone] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirm, setRegConfirm] = useState('');
@@ -86,6 +88,7 @@ export default function AuthScreen() {
   const validateRegister = (): Record<string, string> => {
     const errs: Record<string, string> = {};
     const name = regName.trim();
+    const phone = regPhone.trim();
     const email = regEmail.trim();
 
     if (!name) {
@@ -94,6 +97,12 @@ export default function AuthScreen() {
       errs.regName = 'Name must be at least 2 characters';
     } else if (!/^[a-zA-Z\s'-]+$/.test(name)) {
       errs.regName = 'Name can only contain letters, spaces, hyphens, and apostrophes';
+    }
+
+    if (!phone) {
+      errs.regPhone = 'Phone number is required';
+    } else if (!/^\+973 \d{4} \d{4}$/.test(phone)) {
+      errs.regPhone = 'Phone number must be in format: +973 **** ****';
     }
 
     if (!email) {
@@ -125,7 +134,7 @@ export default function AuthScreen() {
     setLoading(true);
     setApiError('');
     try {
-      await registerApi(regName.trim(), regEmail.trim(), regPassword);
+      await registerApi(regName.trim(), regEmail.trim(), regPassword, regPhone.trim());
       router.replace('/(tabs)');
     } catch (e: any) {
       const status = e?.response?.status;
@@ -138,6 +147,7 @@ export default function AuthScreen() {
         // Map backend field names → frontend state keys and show inline
         const fieldMap: Record<string, string> = {
           name: 'regName',
+          phone: 'regPhone',
           email: 'regEmail',
           password: 'regPassword',
         };
@@ -261,6 +271,11 @@ export default function AuthScreen() {
                   maxLength={80}
                   error={errors.regName}
                 />
+                <PhoneInputField
+                  value={regPhone}
+                  onChangeText={(v) => { setRegPhone(v); clearError('regPhone'); }}
+                  error={errors.regPhone}
+                />
                 <InputField
                   placeholder="Email"
                   icon="mail-outline"
@@ -307,6 +322,67 @@ export default function AuthScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+// ── Phone Input Field ─────────────────────────────────────────────────────────
+
+interface PhoneInputFieldProps {
+  value: string;
+  onChangeText: (text: string) => void;
+  error?: string;
+}
+
+function PhoneInputField({ value, onChangeText, error }: PhoneInputFieldProps) {
+  const formatPhoneNumber = (text: string) => {
+    // Remove all non-digits
+    const digits = text.replace(/\D/g, '');
+    
+    // Always start with +973
+    let formatted = '+973 ';
+    
+    // Add the remaining digits with formatting
+    if (digits.length > 0) {
+      const remaining = digits.substring(0, 8); // Max 8 digits after +973
+      if (remaining.length <= 4) {
+        formatted += remaining;
+      } else {
+        formatted += remaining.substring(0, 4) + ' ' + remaining.substring(4);
+      }
+    }
+    
+    return formatted;
+  };
+
+  const handleTextChange = (text: string) => {
+    // If user tries to delete +973, reset to +973 
+    if (!text.startsWith('+973')) {
+      onChangeText('+973 ');
+      return;
+    }
+    
+    const formatted = formatPhoneNumber(text.substring(5)); // Remove +973 prefix for processing
+    onChangeText(formatted);
+  };
+
+  return (
+    <View style={styles.inputContainer}>
+      <View style={[styles.inputWrapper, error && styles.inputError]}>
+        <Ionicons name="call-outline" size={20} color={error ? Colors.danger : Colors.textSecondary} style={styles.inputIcon} />
+        <TextInput
+          style={styles.input}
+          placeholder="+973 **** ****"
+          placeholderTextColor={Colors.textSecondary}
+          value={value || '+973 '}
+          onChangeText={handleTextChange}
+          keyboardType="phone-pad"
+          textContentType="telephoneNumber"
+          returnKeyType="next"
+          maxLength={14} // +973 + space + 4 digits + space + 4 digits
+        />
+      </View>
+      {error && <Text style={styles.errorText}>{error}</Text>}
+    </View>
   );
 }
 
@@ -468,5 +544,37 @@ const styles = StyleSheet.create({
     color: Colors.danger,
     fontSize: 13,
     fontWeight: '600',
+  },
+  // Phone input styles
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 16,
+    height: 52,
+  },
+  inputError: {
+    borderColor: Colors.danger,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: Colors.textPrimary,
+    fontWeight: '500',
+  },
+  errorText: {
+    fontSize: 12,
+    color: Colors.danger,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });
