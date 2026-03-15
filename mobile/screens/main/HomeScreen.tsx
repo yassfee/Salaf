@@ -14,7 +14,7 @@ import {
   sendNotification, getNotifications, markNotificationRead, markAllNotificationsRead, getUnreadNotificationCount,
   getContacts, ContactResponse, createLend, createBorrowRequest,
   getIncomingLends, acceptLend, rejectLend, getBorrowRequests, approveBorrowRequest, declineBorrowRequest,
-  WalletResponse, getWallet, saveWalletCard, updateWalletBalance,
+  WalletResponse, getWallet, saveWalletCard, processWalletTransaction,
 } from '../../services/api';
 import LendCard from '../../components/cards/LendCard';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -59,6 +59,7 @@ export default function HomeScreen() {
   // Wallet
   const [wallet, setWallet] = useState<WalletResponse | null>(null);
   const [balanceVisible, setBalanceVisible] = useState(false);
+  const balanceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [walletModalVisible, setWalletModalVisible] = useState(false);
   // Wallet form state
   const [wCardNumber, setWCardNumber] = useState('');
@@ -66,6 +67,7 @@ export default function HomeScreen() {
   const [wExpiry, setWExpiry] = useState('');
   const [wBalance, setWBalance] = useState('');
   const [wSaving, setWSaving] = useState(false);
+  const [wError, setWError] = useState('');
 
   // Shared contacts (lend + borrow modals)
   const [formContacts, setFormContacts] = useState<ContactResponse[]>([]);
@@ -365,32 +367,79 @@ export default function HomeScreen() {
     const mo = wallet?.expiryMonth?.toString().padStart(2, '0') ?? '';
     const yr = wallet?.expiryYear?.toString().slice(-2) ?? '';
     setWExpiry(mo && yr ? `${mo}/${yr}` : '');
-    setWBalance(wallet?.balance?.toString() ?? '');
+    setWBalance(wallet?.balance != null ? Number(wallet.balance).toFixed(3) : '');
     setWalletModalVisible(true);
   };
 
   const handleSaveWallet = async () => {
+    setWError('');
     const rawDigits = wCardNumber.replace(/\D/g, '');
     const usingExistingCard = wallet?.hasCard && wCardNumber.includes('•') && rawDigits.length <= 4;
-    if (!usingExistingCard && rawDigits.length < 13) { Alert.alert('Invalid card', 'Please enter a valid card number.'); return; }
+
+    if (!usingExistingCard && rawDigits.length < 13) {
+      setWError('Please enter a valid card number (13–19 digits).');
+      return;
+    }
     const [moStr, yrStr] = wExpiry.split('/');
     const mo = parseInt(moStr ?? '0');
     const yr = parseInt(yrStr ?? '0');
-    if (!mo || mo > 12 || !yr) { Alert.alert('Invalid expiry', 'Please enter a valid expiry (MM/YY).'); return; }
-    if (!wCardholder.trim()) { Alert.alert('Missing name', 'Please enter the cardholder name.'); return; }
+    const currentYear = new Date().getFullYear() % 100;
+    const currentMonth = new Date().getMonth() + 1;
+    if (!mo || mo < 1 || mo > 12 || !yr) {
+      setWError('Please enter a valid expiry date (MM/YY).');
+      return;
+    }
+    if (yr < currentYear || (yr === currentYear && mo < currentMonth)) {
+      setWError('This card has expired.');
+      return;
+    }
+    if (!wCardholder.trim()) {
+      setWError('Please enter the cardholder name.');
+      return;
+    }
+    if (wCardholder.trim().length < 2) {
+      setWError('Cardholder name must be at least 2 characters.');
+      return;
+    }
+
+    const enteredBalance = parseFloat(wBalance) || 0;
+    if (enteredBalance < 0) {
+      setWError('Balance cannot be negative.');
+      return;
+    }
+    if (enteredBalance > 99999) {
+      setWError('Balance cannot exceed 99,999 BD.');
+      return;
+    }
+
     const last4 = usingExistingCard ? (wallet!.last4 ?? rawDigits) : rawDigits.slice(-4);
-    const brand = usingExistingCard ? (wallet!.brand ?? 'CARD') : (detectBrand(wCardNumber) || 'CARD');
+    const brand = usingExistingCard ? (wallet!.brand ?? 'OTHER') : (detectBrand(wCardNumber) || 'OTHER');
+
     try {
       setWSaving(true);
-      const [updatedCard, updatedBalance] = await Promise.all([
-        saveWalletCard({ last4, brand, cardholderName: wCardholder.trim().toUpperCase(), expiryMonth: mo, expiryYear: 2000 + yr }),
-        updateWalletBalance(parseFloat(wBalance) || 0),
-      ]);
+      const updatedCard = await saveWalletCard({
+        last4, brand,
+        cardholderName: wCardholder.trim().toUpperCase(),
+        expiryMonth: mo,
+        expiryYear: 2000 + yr,
+      });
+
+      // Adjust balance via transaction (DEPOSIT or WITHDRAWAL for the delta)
+      const currentBalance = parseFloat(wallet?.balance?.toString() ?? '0') || 0;
+      const delta = parseFloat((enteredBalance - currentBalance).toFixed(3));
+      let updatedBalance = updatedCard;
+      if (delta > 0) {
+        updatedBalance = await processWalletTransaction('DEPOSIT', delta);
+      } else if (delta < 0) {
+        updatedBalance = await processWalletTransaction('WITHDRAWAL', Math.abs(delta));
+      }
+
       setWallet({ ...updatedCard, balance: updatedBalance.balance });
       setWalletModalVisible(false);
       showToast('3');
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'Failed to save wallet.');
+      const msg = e?.response?.data?.message ?? e?.message ?? 'Failed to save wallet.';
+      setWError(msg);
     } finally {
       setWSaving(false);
     }
@@ -464,7 +513,16 @@ export default function HomeScreen() {
               </View>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.totalChip} activeOpacity={0.8} onPress={() => setBalanceVisible(!balanceVisible)}>
+          <TouchableOpacity style={styles.totalChip} activeOpacity={0.8} onPress={() => {
+              if (balanceVisible) {
+                setBalanceVisible(false);
+                if (balanceTimerRef.current) clearTimeout(balanceTimerRef.current);
+              } else {
+                setBalanceVisible(true);
+                if (balanceTimerRef.current) clearTimeout(balanceTimerRef.current);
+                balanceTimerRef.current = setTimeout(() => setBalanceVisible(false), 3000);
+              }
+            }}>
             <Ionicons name={balanceVisible ? 'eye-off-outline' : 'eye-outline'} size={13} color="#121212" />
             <Text style={styles.totalChipText}>
               {balanceVisible ? `BD ${Number(wallet?.balance ?? 0).toFixed(3)}` : 'Show Balance'}
@@ -927,8 +985,14 @@ export default function HomeScreen() {
       </DraggableSheet>
 
       {/* ── Wallet Modal ─────────────────────────────────────────────────────── */}
-      <DraggableSheet visible={walletModalVisible} onClose={() => setWalletModalVisible(false)} sheetStyle={{ maxHeight: '85%' }}>
+      <DraggableSheet visible={walletModalVisible} onClose={() => { setWalletModalVisible(false); setWError(''); }} sheetStyle={{ maxHeight: '85%' }}>
             <Text style={styles.modalTitle}>Manage Wallet</Text>
+            {!!wError && (
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle" size={18} color={Colors.danger} />
+                <Text style={styles.errorText}>{wError}</Text>
+              </View>
+            )}
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
               <Text style={styles.modalHint}>Enter your card details and set your available balance.</Text>
 
@@ -940,7 +1004,7 @@ export default function HomeScreen() {
                   placeholder="•••• •••• •••• ••••"
                   placeholderTextColor={Colors.textSecondary}
                   value={wCardNumber}
-                  onChangeText={(v) => setWCardNumber(formatCardInput(v))}
+                  onChangeText={(v) => { setWCardNumber(formatCardInput(v)); setWError(''); }}
                   keyboardType="number-pad"
                   maxLength={19}
                 />
@@ -955,8 +1019,10 @@ export default function HomeScreen() {
                   placeholder="FULL NAME"
                   placeholderTextColor={Colors.textSecondary}
                   value={wCardholder}
-                  onChangeText={setWCardholder}
+                  onChangeText={(v) => { setWCardholder(v.replace(/[^a-zA-Z\s'-]/g, '').toUpperCase()); setWError(''); }}
                   autoCapitalize="characters"
+                  autoCorrect={false}
+                  maxLength={50}
                 />
               </View>
 
@@ -968,21 +1034,30 @@ export default function HomeScreen() {
                   placeholder="MM/YY"
                   placeholderTextColor={Colors.textSecondary}
                   value={wExpiry}
-                  onChangeText={(v) => setWExpiry(formatExpiryInput(v))}
+                  onChangeText={(v) => { setWExpiry(formatExpiryInput(v)); setWError(''); }}
                   keyboardType="number-pad"
                   maxLength={5}
                 />
               </View>
 
-              <Text style={styles.walletFieldLabel}>Available Balance (BD)</Text>
+              <Text style={styles.walletFieldLabel}>Available Balance (BHD)</Text>
               <View style={styles.walletInputRow}>
-                <Text style={[styles.amountPrefix, { marginRight: 8 }]}>BD</Text>
+                <Text style={[styles.amountPrefix, { marginRight: 8 }]}>BHD</Text>
                 <TextInput
                   style={styles.walletInput}
                   placeholder="0.000"
                   placeholderTextColor={Colors.textSecondary}
                   value={wBalance}
-                  onChangeText={setWBalance}
+                  onChangeText={(v) => {
+                    // Allow only digits and a single decimal point with max 3 decimal places
+                    const clean = v.replace(/[^0-9.]/g, '');
+                    const parts = clean.split('.');
+                    const formatted = parts.length > 2
+                      ? parts[0] + '.' + parts.slice(1).join('')
+                      : parts[0] + (parts[1] !== undefined ? '.' + parts[1].slice(0, 3) : '');
+                    setWBalance(formatted);
+                    setWError('');
+                  }}
                   keyboardType="decimal-pad"
                 />
               </View>

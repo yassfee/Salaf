@@ -66,6 +66,16 @@ public class LendRequestService {
                 .filter(c -> c.getOwner().getId().equals(lender.getId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contact not found"));
 
+        if (borrower.getLinkedUser() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected contact is not a registered user");
+        }
+
+        // Mutual contact check: borrower must also have added lender to their contacts
+        if (!contactRepository.existsByOwnerAndLinkedUser(borrower.getLinkedUser(), lender)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    borrower.getName() + " has not added you to their contacts yet. They must add you before you can lend to them.");
+        }
+
         requireSufficientBalance(lender, req.getAmount());
 
         // Sanitize note input
@@ -187,17 +197,10 @@ public class LendRequestService {
         // Sanitize note input
         String sanitizedNote = inputSanitizer.sanitizeNote(dto.getNote());
 
-        // Find or auto-create the borrower's contact entry in the lender's contact list
+        // Mutual contact check: lender must also have added borrower to their contacts
         Contact borrowerContact = contactRepository.findByOwnerAndLinkedUser(lender, borrower)
-                .orElseGet(() -> {
-                    Contact c = new Contact();
-                    c.setOwner(lender);
-                    c.setLinkedUser(borrower);
-                    c.setName(borrower.getName());
-                    c.setEmail(borrower.getEmail());
-                    c.setPhone(borrower.getPhone());
-                    return contactRepository.save(c);
-                });
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        lenderContact.getName() + " has not added you to their contacts yet. They must add you before you can request a borrow from them."));
 
         LendRequest lend = new LendRequest();
         lend.setLender(lender);

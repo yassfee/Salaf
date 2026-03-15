@@ -1,7 +1,9 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Colors } from '../../constants/colors';
+import { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function CenterTabButton({ children, onPress, onLongPress }: any) {
   return (
@@ -35,6 +37,14 @@ function TabIcon({
 }
 
 export default function TabsLayout() {
+  const router = useRouter();
+
+  useEffect(() => {
+    AsyncStorage.getItem('token').then((token) => {
+      if (!token) router.replace('/auth');
+    });
+  }, []);
+
   return (
     <Tabs
       screenOptions={{

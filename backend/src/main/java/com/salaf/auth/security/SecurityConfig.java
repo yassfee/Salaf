@@ -111,12 +111,11 @@ public class SecurityConfig {
 
             // Add security headers
             .headers(headers -> headers
-                .frameOptions().deny()
-                .contentTypeOptions().and()
+                .frameOptions(frame -> frame.deny())
+                .contentTypeOptions(content -> {})
                 .httpStrictTransportSecurity(hsts -> hsts
                     .maxAgeInSeconds(31536000)
-                    .includeSubdomains(true))
-                .and()
+                    .includeSubDomains(true))
             )
 
             // Route permissions

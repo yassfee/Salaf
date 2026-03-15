@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import {
   getContacts, getLends, createLend, createBorrowRequest, getUserBadges,
-  getIncomingLends, ContactResponse, LendResponse, UserBadges,
+  getIncomingLends, checkMutualContact, ContactResponse, LendResponse, UserBadges,
 } from '../../services/api';
 import CardContainer from '../../components/ui/CardContainer';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -29,6 +29,7 @@ export default function ContactDetailsScreen() {
   const [contact, setContact] = useState<ContactResponse | null>(null);
   const [lends, setLends] = useState<LendResponse[]>([]);
   const [contactBadges, setContactBadges] = useState<UserBadges | null>(null);
+  const [isMutual, setIsMutual] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Lend modal state
@@ -54,14 +55,20 @@ export default function ContactDetailsScreen() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [contacts, allLends, incoming] = await Promise.all([getContacts(), getLends(), getIncomingLends().catch(() => [])]);
+      const [contacts, allLends, incoming] = await Promise.all([getContacts(), getLends().catch(() => []), getIncomingLends().catch(() => [])]);
       const found = contacts.find((c) => c.id === contactId) ?? null;
       setContact(found);
       setLends(allLends.filter((l) => l.contactId === contactId));
       setActiveBorrowCount(incoming.filter((l) => ['ACCEPTED', 'ACTIVE', 'PARTIALLY_PAID', 'OVERDUE'].includes(l.status)).length);
       if (found?.linkedUserId) {
-        const badges = await getUserBadges(found.linkedUserId).catch(() => null);
+        const [badges, mutual] = await Promise.all([
+          getUserBadges(found.linkedUserId).catch(() => null),
+          checkMutualContact(found.linkedUserId).catch(() => false),
+        ]);
         setContactBadges(badges);
+        setIsMutual(mutual);
+      } else {
+        setIsMutual(false);
       }
     } catch {
       Alert.alert('Error', 'Failed to load contact details.');
@@ -256,45 +263,45 @@ export default function ContactDetailsScreen() {
 
               <View style={styles.spacer} />
 
-              {!contact.linkedUserId && (
+              {!contact.linkedUserId ? (
                 <View style={styles.notRegisteredBanner}>
                   <Ionicons name="information-circle-outline" size={16} color={Colors.textSecondary} />
                   <Text style={styles.notRegisteredText}>
                     This contact is not registered on Salaf. Lend/Borrow is unavailable.
                   </Text>
                 </View>
-              )}
+              ) : isMutual === false ? (
+                <View style={styles.notRegisteredBanner}>
+                  <Ionicons name="lock-closed-outline" size={16} color={Colors.textSecondary} />
+                  <Text style={styles.notRegisteredText}>
+                    {contact.name} has not added you to their contacts yet. Both users must add each other before lending or borrowing.
+                  </Text>
+                </View>
+              ) : null}
 
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.lendBtn, !contact.linkedUserId && styles.actionBtnDisabled]}
-                  onPress={() => {
-                    if (!contact.linkedUserId) {
-                      Alert.alert('Not Registered', 'This contact must be a registered Salaf user to create a lend.');
-                      return;
-                    }
-                    setLendVisible(true);
-                  }}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons name="arrow-up-outline" size={18} color="#fff" />
-                  <Text style={styles.actionBtnText}>Lend</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.borrowBtn, !contact.linkedUserId && styles.borrowBtnDisabled]}
-                  onPress={() => {
-                    if (!contact.linkedUserId) {
-                      Alert.alert('Not Registered', 'This contact must be a registered Salaf user to request a borrow.');
-                      return;
-                    }
-                    setBorrowVisible(true);
-                  }}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons name="arrow-down-outline" size={18} color={contact.linkedUserId ? Colors.primary : Colors.textSecondary} />
-                  <Text style={[styles.actionBtnText, { color: contact.linkedUserId ? Colors.primary : Colors.textSecondary }]}>Borrow</Text>
-                </TouchableOpacity>
-              </View>
+              {(() => {
+                const canTransact = !!contact.linkedUserId && isMutual === true;
+                return (
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.lendBtn, !canTransact && styles.actionBtnDisabled]}
+                      onPress={() => canTransact && setLendVisible(true)}
+                      activeOpacity={canTransact ? 0.85 : 1}
+                    >
+                      <Ionicons name="arrow-up-outline" size={18} color="#fff" />
+                      <Text style={styles.actionBtnText}>Lend</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.borrowBtn, !canTransact && styles.borrowBtnDisabled]}
+                      onPress={() => canTransact && setBorrowVisible(true)}
+                      activeOpacity={canTransact ? 0.85 : 1}
+                    >
+                      <Ionicons name="arrow-down-outline" size={18} color={canTransact ? Colors.primary : Colors.textSecondary} />
+                      <Text style={[styles.actionBtnText, { color: canTransact ? Colors.primary : Colors.textSecondary }]}>Borrow</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })()}
             </View>
           </>)}
         </View>

@@ -76,6 +76,12 @@ public class ContactService {
         return ContactResponse.from(saved);
     }
 
+    public boolean isMutual(User currentUser, Long otherUserId) {
+        User otherUser = userRepository.findById(otherUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return contactRepository.existsByOwnerAndLinkedUser(otherUser, currentUser);
+    }
+
     @Transactional
     public void deleteContact(Long id, User currentUser) {
         // Validate contact ID

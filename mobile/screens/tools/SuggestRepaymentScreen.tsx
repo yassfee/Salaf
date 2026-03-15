@@ -33,7 +33,7 @@ const PRIORITY_COLOR: Record<string, string> = {
   LATER:    Colors.textSecondary,
 };
 
-const PLANS_KEY = 'repayment_plans';
+const plansKey = (email: string) => `repayment_plans_${email}`;
 
 interface SavedPlan {
   id: string;
@@ -58,12 +58,15 @@ export default function SuggestRepaymentScreen() {
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>([]);
   const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
 
+  const [userEmail, setUserEmail] = useState('');
+
   const budget = Number(wallet?.balance ?? 0);
   const totalAssigned = plan.reduce((s, x) => s + x.suggestedPayment, 0);
   const leftover = Math.max(0, budget - totalAssigned);
 
   useEffect(() => {
     getWallet().then(setWallet).catch(() => {});
+    AsyncStorage.getItem('user_email').then((e) => setUserEmail(e ?? '')).catch(() => {});
   }, []);
 
   const loadHistory = useCallback(() => {
@@ -75,11 +78,12 @@ export default function SuggestRepaymentScreen() {
   }, []);
 
   const loadSavedPlans = useCallback(async () => {
+    if (!userEmail) return;
     try {
-      const raw = await AsyncStorage.getItem(PLANS_KEY);
+      const raw = await AsyncStorage.getItem(plansKey(userEmail));
       setSavedPlans(raw ? JSON.parse(raw) : []);
     } catch { /* ignore */ }
-  }, []);
+  }, [userEmail]);
 
   useFocusEffect(useCallback(() => {
     if (tab === 'history') loadHistory();
@@ -106,10 +110,11 @@ export default function SuggestRepaymentScreen() {
           budget,
           items: result,
         };
-        const raw = await AsyncStorage.getItem(PLANS_KEY);
+        const key = plansKey(userEmail);
+        const raw = await AsyncStorage.getItem(key);
         const existing: SavedPlan[] = raw ? JSON.parse(raw) : [];
         const updated = [newPlan, ...existing].slice(0, 20); // keep last 20
-        await AsyncStorage.setItem(PLANS_KEY, JSON.stringify(updated));
+        await AsyncStorage.setItem(key, JSON.stringify(updated));
         setSavedPlans(updated);
       }
     } catch (e: any) {
@@ -122,7 +127,7 @@ export default function SuggestRepaymentScreen() {
   const deleteSavedPlan = async (id: string) => {
     const updated = savedPlans.filter((p) => p.id !== id);
     setSavedPlans(updated);
-    await AsyncStorage.setItem(PLANS_KEY, JSON.stringify(updated));
+    await AsyncStorage.setItem(plansKey(userEmail), JSON.stringify(updated));
   };
 
   const TABS: { key: Tab; label: string }[] = [
@@ -283,7 +288,7 @@ export default function SuggestRepaymentScreen() {
 
       {/* ── Saved Plans Tab ── */}
       {tab === 'plans' && (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { paddingTop: 20 }]}>
           {savedPlans.length === 0 ? (
             <CardContainer>
               <View style={styles.emptyWrap}>
@@ -370,7 +375,7 @@ export default function SuggestRepaymentScreen() {
 
       {/* ── History Tab ── */}
       {tab === 'history' && (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { paddingTop: 20 }]}>
           {historyLoading ? (
             <ActivityIndicator color={Colors.primary} style={{ marginTop: 32 }} />
           ) : history.length === 0 ? (

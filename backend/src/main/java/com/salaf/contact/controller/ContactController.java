@@ -13,6 +13,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/contacts")
@@ -33,6 +34,13 @@ public class ContactController {
             @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(contactService.createContact(request, currentUser));
+    }
+
+    @GetMapping("/mutual/{userId}")
+    public Map<String, Boolean> checkMutual(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal User currentUser) {
+        return Map.of("mutual", contactService.isMutual(currentUser, userId));
     }
 
     @DeleteMapping("/{id}")

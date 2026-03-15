@@ -38,7 +38,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         
         if (isRateLimited(clientIp, maxRequests)) {
             logger.warn("Rate limit exceeded for IP: {} on path: {}", clientIp, requestPath);
-            response.setStatus(HttpServletResponse.SC_TOO_MANY_REQUESTS);
+            response.setStatus(429); // 429 Too Many Requests
             response.setContentType("application/json");
             response.getWriter().write("{\"message\":\"Rate limit exceeded. Please try again later.\"}");
             return;
@@ -61,16 +61,8 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp;
-        }
-        
+        // Do not trust X-Forwarded-For — it can be spoofed by clients to bypass rate limiting.
+        // Use the direct connection IP which cannot be faked.
         return request.getRemoteAddr();
     }
 

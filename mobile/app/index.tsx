@@ -14,8 +14,7 @@ export default function Index() {
     try {
       const token = await AsyncStorage.getItem('token');
       setIsAuthenticated(!!token);
-    } catch (error) {
-      console.error('Error checking auth status:', error);
+    } catch {
       setIsAuthenticated(false);
     } finally {
       setIsLoading(false);

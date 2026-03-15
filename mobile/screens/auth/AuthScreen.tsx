@@ -69,10 +69,8 @@ export default function AuthScreen() {
       router.replace('/(tabs)');
     } catch (e: any) {
       const status = e?.response?.status;
-      if (status === 401 || status === 403) {
+      if (status === 401 || status === 403 || status === 404) {
         setApiError('Incorrect email or password. Please try again.');
-      } else if (status === 404) {
-        setApiError('No account found with this email.');
       } else if (!e?.response) {
         setApiError('Cannot reach the server. Check your connection.');
       } else {
@@ -106,12 +104,8 @@ export default function AuthScreen() {
 
     if (!regPassword) {
       errs.regPassword = 'Password is required';
-    } else if (regPassword.length < 8) {
-      errs.regPassword = 'Password must be at least 8 characters';
-    } else if (!/[A-Z]/.test(regPassword)) {
-      errs.regPassword = 'Password must contain at least one uppercase letter';
-    } else if (!/[0-9]/.test(regPassword)) {
-      errs.regPassword = 'Password must contain at least one number';
+    } else if (!isPasswordValid(regPassword)) {
+      errs.regPassword = 'Password does not meet all requirements below';
     }
 
     if (!regConfirm) {
@@ -135,12 +129,26 @@ export default function AuthScreen() {
       router.replace('/(tabs)');
     } catch (e: any) {
       const status = e?.response?.status;
+      const data = e?.response?.data;
       if (status === 409) {
         setApiError('An account with this email already exists.');
       } else if (!e?.response) {
         setApiError('Cannot reach the server. Check your connection.');
+      } else if (status === 400 && data?.errors) {
+        // Map backend field names → frontend state keys and show inline
+        const fieldMap: Record<string, string> = {
+          name: 'regName',
+          email: 'regEmail',
+          password: 'regPassword',
+        };
+        const mapped: Record<string, string> = {};
+        Object.entries(data.errors).forEach(([field, msg]) => {
+          const key = fieldMap[field] ?? field;
+          mapped[key] = msg as string;
+        });
+        setErrors(mapped);
       } else {
-        setApiError(e?.response?.data?.message ?? 'Registration failed. Please try again.');
+        setApiError(data?.message ?? 'Registration failed. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -277,8 +285,8 @@ export default function AuthScreen() {
                   maxLength={128}
                   error={errors.regPassword}
                 />
-                {!!regPassword && !errors.regPassword && (
-                  <PasswordStrengthBar password={regPassword} />
+                {!!regPassword && (
+                  <PasswordRequirements password={regPassword} />
                 )}
                 <InputField
                   placeholder="Confirm Password"
@@ -302,63 +310,58 @@ export default function AuthScreen() {
   );
 }
 
-// ── Password strength indicator ───────────────────────────────────────────────
+// ── Password helpers ──────────────────────────────────────────────────────────
 
-function getStrength(pw: string): { level: 0 | 1 | 2 | 3; label: string; color: string } {
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (/[A-Z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^a-zA-Z0-9]/.test(pw)) score++;
+const PW_RULES = [
+  { label: 'At least 8 characters',          test: (p: string) => p.length >= 8 },
+  { label: 'Uppercase letter (A–Z)',          test: (p: string) => /[A-Z]/.test(p) },
+  { label: 'Lowercase letter (a–z)',          test: (p: string) => /[a-z]/.test(p) },
+  { label: 'Number (0–9)',                    test: (p: string) => /[0-9]/.test(p) },
+  { label: 'Special character (@$!%*?&-_)',   test: (p: string) => /[@$!%*?&\-_]/.test(p) },
+];
 
-  if (score <= 1) return { level: 0, label: 'Weak', color: Colors.danger };
-  if (score === 2) return { level: 1, label: 'Fair', color: '#FB923C' };
-  if (score === 3) return { level: 2, label: 'Good', color: '#22C55E' };
-  return { level: 3, label: 'Strong', color: '#16A34A' };
+function isPasswordValid(pw: string) {
+  return PW_RULES.every(r => r.test(pw));
 }
 
-function PasswordStrengthBar({ password }: { password: string }) {
-  const { level, label, color } = getStrength(password);
-  const filled = level + 1;
+function PasswordRequirements({ password }: { password: string }) {
   return (
-    <View style={strengthStyles.wrapper}>
-      <View style={strengthStyles.bars}>
-        {[0, 1, 2, 3].map((i) => (
-          <View
-            key={i}
-            style={[strengthStyles.bar, { backgroundColor: i < filled ? color : Colors.border }]}
-          />
-        ))}
-      </View>
-      <Text style={[strengthStyles.label, { color }]}>{label}</Text>
+    <View style={reqStyles.wrapper}>
+      {PW_RULES.map((rule) => {
+        const met = rule.test(password);
+        return (
+          <View key={rule.label} style={reqStyles.row}>
+            <Ionicons
+              name={met ? 'checkmark-circle' : 'ellipse-outline'}
+              size={14}
+              color={met ? '#22C55E' : Colors.textSecondary}
+            />
+            <Text style={[reqStyles.text, met && reqStyles.textMet]}>{rule.label}</Text>
+          </View>
+        );
+      })}
     </View>
   );
 }
 
-const strengthStyles = StyleSheet.create({
+const reqStyles = StyleSheet.create({
   wrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: -6,
+    marginTop: -4,
     marginBottom: 12,
-    paddingHorizontal: 2,
-  },
-  bars: {
-    flex: 1,
-    flexDirection: 'row',
+    paddingHorizontal: 4,
     gap: 4,
   },
-  bar: {
-    flex: 1,
-    height: 4,
-    borderRadius: 2,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  label: {
-    fontSize: 11,
-    fontWeight: '600',
-    width: 44,
-    textAlign: 'right',
+  text: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  textMet: {
+    color: '#22C55E',
   },
 });
 

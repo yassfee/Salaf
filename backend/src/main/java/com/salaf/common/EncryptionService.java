@@ -20,27 +20,20 @@ public class EncryptionService {
     @Value("${app.encryption.key:}")
     private String encryptionKey;
 
+    private boolean isEncryptionEnabled() {
+        return encryptionKey != null && !encryptionKey.isEmpty();
+    }
+
     private SecretKey getSecretKey() {
-        if (encryptionKey == null || encryptionKey.isEmpty()) {
-            // Generate a key for development - use proper key management in production
-            try {
-                KeyGenerator keyGen = KeyGenerator.getInstance(ALGORITHM);
-                keyGen.init(256);
-                return keyGen.generateKey();
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to generate encryption key", e);
-            }
-        }
-        
         byte[] decodedKey = Base64.getDecoder().decode(encryptionKey);
         return new SecretKeySpec(decodedKey, ALGORITHM);
     }
 
     public String encrypt(String plainText) {
-        if (plainText == null || plainText.isEmpty()) {
-            return plainText;
-        }
-        
+        if (plainText == null || plainText.isEmpty()) return plainText;
+        // No key configured (dev mode) — store as plain text
+        if (!isEncryptionEnabled()) return plainText;
+
         try {
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
             cipher.init(Cipher.ENCRYPT_MODE, getSecretKey());
@@ -52,10 +45,10 @@ public class EncryptionService {
     }
 
     public String decrypt(String encryptedText) {
-        if (encryptedText == null || encryptedText.isEmpty()) {
-            return encryptedText;
-        }
-        
+        if (encryptedText == null || encryptedText.isEmpty()) return encryptedText;
+        // No key configured (dev mode) — value was stored as plain text
+        if (!isEncryptionEnabled()) return encryptedText;
+
         try {
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
             cipher.init(Cipher.DECRYPT_MODE, getSecretKey());

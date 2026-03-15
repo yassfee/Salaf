@@ -88,6 +88,7 @@ export default function LendsScreen() {
               <Text style={[styles.sortText, sortOrder === 'recent' && styles.sortTextActive]}>Recent</Text>
             </TouchableOpacity>
           </View>
+
         </View>
 
         {/* Gray rounded body */}
@@ -101,6 +102,7 @@ export default function LendsScreen() {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
+                style={styles.chipsScroll}
                 contentContainerStyle={styles.chipsRow}
               >
                 {filterChips.map((chip) => (
@@ -115,7 +117,6 @@ export default function LendsScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-
               <View style={styles.px}>
                 {filtered.length === 0 ? (
                   <View style={styles.empty}>
@@ -177,7 +178,8 @@ const styles = StyleSheet.create({
   sortTextActive: { color: Colors.primary },
   center: { paddingVertical: 60, alignItems: 'center' },
   px: { paddingHorizontal: 20, paddingBottom: 24 },
-  chipsRow: { paddingHorizontal: 20, paddingVertical: 16, gap: 8 },
+  chipsScroll: { flexShrink: 0, flexGrow: 0 },
+  chipsRow: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10, gap: 8, flexDirection: 'row', alignItems: 'center' },
   chip: {
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10,
     borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.card,

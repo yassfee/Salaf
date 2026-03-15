@@ -22,12 +22,9 @@ api.interceptors.request.use(
       const token = await AsyncStorage.getItem('token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-        console.log(`Adding token to ${config.method?.toUpperCase()} ${config.url}`);
-      } else {
-        console.log(`No token found for ${config.method?.toUpperCase()} ${config.url}`);
       }
-    } catch (error) {
-      console.error('Error getting token from AsyncStorage:', error);
+    } catch {
+      // silently continue without token
     }
     return config;
   },
@@ -41,13 +38,10 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 403 || error.response?.status === 401) {
-      console.error(`${error.response.status} error for ${error.config?.url}:`, error.response?.data);
-      // Token is invalid, clear it
       try {
         await AsyncStorage.multiRemove(['token', 'user_name', 'user_email']);
-        console.log('Cleared invalid auth data');
-      } catch (e) {
-        console.error('Error clearing auth data:', e);
+      } catch {
+        // ignore
       }
     }
     return Promise.reject(error);
@@ -129,17 +123,12 @@ export interface DueSoonLend {
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 export async function loginApi(email: string, password: string): Promise<AuthResponse> {
-  console.log('Attempting login for:', email);
   const res = await api.post<AuthResponse>('/api/auth/login', { email, password });
-  console.log('Login successful, storing token...');
-  
   await AsyncStorage.multiSet([
     ['token', res.data.token],
     ['user_name', res.data.name],
     ['user_email', res.data.email],
   ]);
-  
-  console.log('Token stored successfully');
   return res.data;
 }
 
@@ -201,6 +190,11 @@ export async function getContacts(): Promise<ContactResponse[]> {
 export async function createContact(linkedUserEmail: string): Promise<ContactResponse> {
   const res = await api.post<ContactResponse>('/api/contacts', { linkedUserEmail });
   return res.data;
+}
+
+export async function checkMutualContact(userId: number): Promise<boolean> {
+  const res = await api.get<{ mutual: boolean }>(`/api/contacts/mutual/${userId}`);
+  return res.data.mutual;
 }
 
 export async function deleteContact(id: number): Promise<void> {
@@ -426,8 +420,8 @@ export async function saveWalletCard(data: {
   return res.data;
 }
 
-export async function updateWalletBalance(balance: number): Promise<WalletResponse> {
-  const res = await api.put<WalletResponse>('/api/wallet/balance', { balance });
+export async function processWalletTransaction(type: 'DEPOSIT' | 'WITHDRAWAL', amount: number): Promise<WalletResponse> {
+  const res = await api.post<WalletResponse>('/api/wallet/transaction', { type, amount });
   return res.data;
 }
 
@@ -475,7 +469,6 @@ export async function getReceiptUrl(lendId: number): Promise<string> {
   if (!token) {
     throw new Error('Authentication required');
   }
-  
   return `${API_BASE_URL}/api/pdf/receipt/${lendId}?token=${encodeURIComponent(token)}`;
 }
 

@@ -36,9 +36,13 @@ public class WalletService {
 
     public WalletResponse getWallet(User user) {
         Wallet wallet = getOrCreate(user);
-        // Decrypt sensitive data before returning
         if (wallet.getCardholderName() != null) {
-            wallet.setCardholderName(encryptionService.decrypt(wallet.getCardholderName()));
+            try {
+                wallet.setCardholderName(encryptionService.decrypt(wallet.getCardholderName()));
+            } catch (Exception e) {
+                logger.error("Failed to decrypt cardholder name for user: {}", user.getEmail());
+                wallet.setCardholderName(null);
+            }
         }
         return WalletResponse.from(wallet);
     }
@@ -84,6 +88,9 @@ public class WalletService {
         switch (req.type().toUpperCase()) {
             case "DEPOSIT":
                 newBalance = w.getBalance().add(req.amount());
+                if (newBalance.compareTo(new BigDecimal("99999.999")) > 0) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Balance would exceed the maximum allowed limit");
+                }
                 break;
             case "WITHDRAWAL":
                 if (w.getBalance().compareTo(req.amount()) < 0) {
