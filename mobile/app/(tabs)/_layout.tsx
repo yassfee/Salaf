@@ -1,6 +1,6 @@
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -99,7 +99,11 @@ export default function TabsLayout() {
         options={{
           title: '',
           tabBarIcon: () => (
-            <Ionicons name="swap-vertical-outline" size={26} color="#FFFFFF" />
+            <Image
+              source={require('../../assets/Salaf LogoW.png')}
+              style={{ width: 36, height: 36 }}
+              resizeMode="contain"
+            />
           ),
           tabBarButton: (props) => <CenterTabButton {...props} />,
         }}

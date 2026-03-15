@@ -109,6 +109,14 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/settings')}>
+              <Ionicons name="settings-outline" size={20} color="#121212" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerBtn} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={20} color="#121212" />
+            </TouchableOpacity>
+          </View>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{userName ? getInitials(userName) : '?'}</Text>
           </View>
@@ -140,15 +148,6 @@ export default function ProfileScreen() {
             ))}
           </View>
 
-          <View style={styles.section}>
-            <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push('/settings')}>
-              <Text style={styles.settingsText}>Settings</Text>
-            </TouchableOpacity>
-            <View style={styles.spacer} />
-            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-              <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -185,9 +184,6 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 12, color: Colors.textSecondary, fontWeight: '400' },
   section: { paddingHorizontal: 20, marginTop: 8, marginBottom: 16 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: Colors.textPrimary, marginBottom: 12 },
-  spacer: { height: 12 },
-  settingsBtn: { height: 52, borderRadius: 14, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
-  settingsText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', letterSpacing: 0.2 },
-  logoutBtn: { height: 52, borderRadius: 14, backgroundColor: Colors.card, borderWidth: 1.5, borderColor: Colors.textPrimary, alignItems: 'center', justifyContent: 'center' },
-  logoutText: { color: Colors.textPrimary, fontSize: 14, fontWeight: '700', letterSpacing: 0.2 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignSelf: 'stretch', marginBottom: 12 },
+  headerBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EFEFEF', alignItems: 'center', justifyContent: 'center' },
 });

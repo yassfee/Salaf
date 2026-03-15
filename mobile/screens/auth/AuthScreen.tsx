@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -168,8 +169,11 @@ export default function AuthScreen() {
         >
           {/* Logo Area */}
           <View style={styles.logoArea}>
-            <Text style={styles.logoIcon}>$</Text>
-            <Text style={styles.logoText}>Salaf</Text>
+            <Image
+              source={require('../../assets/Salaf LogoY.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
             <Text style={styles.logoSubtitle}>Smart Personal Lending</Text>
           </View>
 
@@ -232,20 +236,7 @@ export default function AuthScreen() {
                   maxLength={128}
                   error={errors.loginPassword}
                 />
-                <TouchableOpacity style={styles.forgotRow}>
-                  <Text style={styles.forgotText}>Forgot password?</Text>
-                </TouchableOpacity>
                 <PrimaryButton title="Login" onPress={handleLogin} loading={loading} disabled={loading} />
-                <View style={styles.divider}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>or</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-                <OutlinedButton
-                  title="Continue with Google"
-                  onPress={() => {}}
-                  icon="logo-google"
-                />
               </>
             ) : (
               <>
@@ -380,15 +371,10 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 40,
   },
-  logoIcon: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  logoText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginBottom: 6,
+  logoImage: {
+    width: 180,
+    height: 80,
+    marginBottom: 8,
   },
   logoSubtitle: {
     fontSize: 14,
@@ -426,31 +412,6 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 0,
-  },
-  forgotRow: {
-    alignSelf: 'flex-end',
-    marginBottom: 16,
-    marginTop: -4,
-  },
-  forgotText: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontWeight: '500',
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  dividerText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginHorizontal: 12,
   },
   errorBanner: {
     flexDirection: 'row',
