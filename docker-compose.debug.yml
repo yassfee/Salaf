@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  salaf-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_PORT=8080
+      - DB_URL=jdbc:sqlite:/app/data/salaf.db
+      - JWT_SECRET=debug-jwt-secret-key-for-testing-only-not-secure
+      - JWT_EXPIRATION_MS=86400000
+      - ENCRYPTION_KEY=
+      - LOG_LEVEL_ROOT=DEBUG
+      - LOG_LEVEL_SECURITY=DEBUG
+    volumes:
+      - salaf_data:/app/data
+      - salaf_logs:/app/logs
+    restart: "no"
+    command: ["java", "-jar", "app.jar", "--debug"]
+
+volumes:
+  salaf_data:
+    driver: local
+  salaf_logs:
+    driver: local
