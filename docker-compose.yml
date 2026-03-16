@@ -1,33 +1,11 @@
 version: '3.8'
 
 services:
-  salaf-backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+  web:
+    build: .
     ports:
       - "8080:8080"
     environment:
+      - JWT_SECRET=your-secure-256-bit-secret-key-change-in-production
       - SERVER_PORT=8080
-      - DB_URL=jdbc:sqlite:/app/data/salaf.db
-      - JWT_SECRET=${JWT_SECRET:-your-secure-256-bit-secret-key-change-in-production}
-      - JWT_EXPIRATION_MS=${JWT_EXPIRATION_MS:-86400000}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
-      - LOG_LEVEL_ROOT=${LOG_LEVEL_ROOT:-INFO}
-      - LOG_LEVEL_SECURITY=${LOG_LEVEL_SECURITY:-WARN}
-    volumes:
-      - salaf_data:/app/data
-      - salaf_logs:/app/logs
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-volumes:
-  salaf_data:
-    driver: local
-  salaf_logs:
-    driver: local
+      - COOKIE_SECURE=false

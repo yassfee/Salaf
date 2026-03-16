@@ -2,16 +2,14 @@
 .git
 .gitignore
 
-# Documentation (but keep deployment docs)
+# Documentation
 README.md
 TDD_Test_Plan_Salaf.md
 *.pptx
+*.md
 
 # Mobile app (not needed for backend deployment)
 mobile/
-
-# Other project copies
-09Salaf/
 
 # IDE files
 .vscode/
@@ -32,3 +30,8 @@ node_modules/
 # Temporary files
 *.tmp
 *.temp
+
+# Docker files (except main ones)
+docker-compose.*.yml
+backend/Dockerfile*
+backend/.dockerignore
