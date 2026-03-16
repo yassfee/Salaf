@@ -1,5 +1,5 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
-FROM maven:3.9-eclipse-temurin-21 AS builder
+FROM maven:3.9-eclipse-temurin-20 AS builder
 WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline -q
@@ -7,8 +7,11 @@ COPY src ./src
 RUN mvn clean package -DskipTests -q
 
 # ── Stage 2: Run ──────────────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:20-jre-alpine
 WORKDIR /app
+
+# Install curl for health checks
+RUN apk add --no-cache curl
 
 # Create data directory for SQLite persistence
 RUN mkdir -p /app/data /app/logs

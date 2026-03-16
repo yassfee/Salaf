@@ -607,3 +607,139 @@ java.lang.NullPointerException: Cannot invoke "org.springframework.security.core
 	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63)
 	at java.base/java.lang.Thread.run(Thread.java:1623)
 2026-03-16 01:45:49 [http-nio-8080-exec-5] WARN  AUDIT - SECURITY_EVENT - Event: UNEXPECTED_ERROR - User: unknown - Details: NullPointerException - Time: 2026-03-16T01:45:49.420196600
+2026-03-16 16:25:35 [main] INFO  com.salaf.SalafApplication - Starting SalafApplication using Java 20 with PID 29948 (D:\Documents\08Salaf\backend\target\classes started by husai in D:\Documents\08Salaf\backend)
+2026-03-16 16:25:35 [main] INFO  com.salaf.SalafApplication - No active profile set, falling back to 1 default profile: "default"
+2026-03-16 16:25:36 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-03-16 16:25:37 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 141 ms. Found 6 JPA repository interfaces.
+2026-03-16 16:25:38 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2026-03-16 16:25:38 [main] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2026-03-16 16:25:38 [main] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.19]
+2026-03-16 16:25:38 [main] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2026-03-16 16:25:38 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 2561 ms
+2026-03-16 16:25:38 [main] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-03-16 16:25:38 [main] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.4.4.Final
+2026-03-16 16:25:38 [main] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2026-03-16 16:25:39 [main] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-03-16 16:25:39 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2026-03-16 16:25:39 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection org.sqlite.jdbc4.JDBC4Connection@3212d853
+2026-03-16 16:25:39 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2026-03-16 16:25:41 [main] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-03-16 16:25:41 [main] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-03-16 16:25:41 [main] INFO  o.s.d.j.r.query.QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-03-16 16:25:43 [main] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-03-16 16:25:44 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path ''
+2026-03-16 16:25:44 [main] INFO  com.salaf.SalafApplication - Started SalafApplication in 8.982 seconds (process running for 9.444)
+2026-03-16 16:31:33 [http-nio-8080-exec-1] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-03-16 16:31:33 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-03-16 16:31:33 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 1 ms
+2026-03-16 16:31:33 [http-nio-8080-exec-1] INFO  c.s.common.GlobalExceptionHandler - Validation error: {password=*** must be between 8 and 128 characters}
+2026-03-16 16:31:42 [http-nio-8080-exec-2] INFO  c.s.common.GlobalExceptionHandler - Validation error: {password=*** must be between 8 and 128 characters}
+2026-03-16 16:31:53 [http-nio-8080-exec-3] WARN  AUDIT - USER_LOGIN_FAILED - Email: yousif@test.com - Time: 2026-03-16T16:31:53.756907600
+2026-03-16 16:31:53 [http-nio-8080-exec-3] WARN  AUDIT - SECURITY_EVENT - Event: AUTHENTICATION_FAILURE - User: yousif@test.com - Details: Bad credentials provided - Time: 2026-03-16T16:31:53.756907600
+2026-03-16 16:31:53 [http-nio-8080-exec-3] WARN  com.salaf.auth.service.AuthService - Failed login attempt for email: yousif@test.com
+2026-03-16 16:31:53 [http-nio-8080-exec-3] WARN  AUDIT - USER_LOGIN_FAILED - Email: yousif@test.com - Time: 2026-03-16T16:31:53.757905400
+2026-03-16 16:31:53 [http-nio-8080-exec-3] WARN  c.s.common.GlobalExceptionHandler - Authentication failed: Bad credentials
+2026-03-16 16:32:04 [http-nio-8080-exec-7] INFO  c.s.common.GlobalExceptionHandler - Validation error: {password=*** must contain at least one uppercase letter, one lowercase letter, one digit, and one special character (@$!%*?&-_)}
+2026-03-16 16:32:39 [http-nio-8080-exec-5] INFO  com.salaf.auth.service.AuthService - New user registered: yousif@test.com
+2026-03-16 16:32:39 [http-nio-8080-exec-5] INFO  AUDIT - USER_REGISTRATION - Email: yousif@test.com - Time: 2026-03-16T16:32:39.629613700
+2026-03-16 16:33:18 [http-nio-8080-exec-6] INFO  com.salaf.auth.service.AuthService - New user registered: ali@test.com
+2026-03-16 16:33:18 [http-nio-8080-exec-6] INFO  AUDIT - USER_REGISTRATION - Email: ali@test.com - Time: 2026-03-16T16:33:18.040969
+2026-03-16 16:33:28 [http-nio-8080-exec-4] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:33:28.906539100
+2026-03-16 16:33:28 [http-nio-8080-exec-4] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:33:28 [http-nio-8080-exec-4] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:33:28.908539200
+2026-03-16 16:33:38 [http-nio-8080-exec-8] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T16:33:38.299524600
+2026-03-16 16:33:38 [http-nio-8080-exec-8] INFO  com.salaf.auth.service.AuthService - Successful login for user: ali@test.com
+2026-03-16 16:33:38 [http-nio-8080-exec-8] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T16:33:38.302557100
+2026-03-16 16:34:03 [http-nio-8080-exec-9] INFO  c.s.contact.service.ContactService - Contact created by user: yousif@test.com for user: ali@test.com
+2026-03-16 16:34:57 [http-nio-8080-exec-10] WARN  c.s.common.GlobalExceptionHandler - ResponseStatusException: 403 FORBIDDEN "Ali Hassan has not added you to their contacts yet. They must add you before you can lend to them."
+2026-03-16 16:35:09 [http-nio-8080-exec-1] WARN  c.s.common.GlobalExceptionHandler - ResponseStatusException: 403 FORBIDDEN "Ali Hassan has not added you to their contacts yet. They must add you before you can lend to them."
+2026-03-16 16:35:18 [http-nio-8080-exec-2] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:35:18.455454500
+2026-03-16 16:35:18 [http-nio-8080-exec-2] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:35:18 [http-nio-8080-exec-2] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:35:18.459872200
+2026-03-16 16:35:18 [http-nio-8080-exec-3] WARN  c.s.common.GlobalExceptionHandler - ResponseStatusException: 403 FORBIDDEN "Ali Hassan has not added you to their contacts yet. They must add you before you can lend to them."
+2026-03-16 16:35:29 [http-nio-8080-exec-7] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:35:29.055540800
+2026-03-16 16:35:29 [http-nio-8080-exec-7] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:35:29 [http-nio-8080-exec-7] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:35:29.059299600
+2026-03-16 16:35:39 [http-nio-8080-exec-6] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:35:39.102744100
+2026-03-16 16:35:39 [http-nio-8080-exec-6] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:35:39 [http-nio-8080-exec-6] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:35:39.105272500
+2026-03-16 16:36:08 [http-nio-8080-exec-8] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:36:08.331571200
+2026-03-16 16:36:08 [http-nio-8080-exec-8] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:36:08 [http-nio-8080-exec-8] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:36:08.335097700
+2026-03-16 16:36:08 [http-nio-8080-exec-9] WARN  c.s.common.GlobalExceptionHandler - ResponseStatusException: 403 FORBIDDEN "Ali Hassan has not added you to their contacts yet. They must add you before you can lend to them."
+2026-03-16 16:36:18 [http-nio-8080-exec-10] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T16:36:18.022684100
+2026-03-16 16:36:18 [http-nio-8080-exec-10] INFO  com.salaf.auth.service.AuthService - Successful login for user: ali@test.com
+2026-03-16 16:36:18 [http-nio-8080-exec-10] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T16:36:18.027105800
+2026-03-16 16:36:18 [http-nio-8080-exec-1] INFO  c.s.contact.service.ContactService - Contact created by user: ali@test.com for user: yousif@test.com
+2026-03-16 16:36:27 [http-nio-8080-exec-2] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:36:27.599270300
+2026-03-16 16:36:27 [http-nio-8080-exec-2] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:36:27 [http-nio-8080-exec-2] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:36:27.601660900
+2026-03-16 16:36:27 [http-nio-8080-exec-3] WARN  c.s.common.GlobalExceptionHandler - ResponseStatusException: 400 BAD_REQUEST "Insufficient balance. You have 0 BD but need 100 BD."
+2026-03-16 16:36:38 [http-nio-8080-exec-7] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:36:38.637451800
+2026-03-16 16:36:38 [http-nio-8080-exec-7] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:36:38 [http-nio-8080-exec-7] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:36:38.639447200
+2026-03-16 16:36:38 [http-nio-8080-exec-5] WARN  c.s.common.GlobalExceptionHandler - ResponseStatusException: 400 BAD_REQUEST "Insufficient balance. You have 0 BD but need 100 BD."
+2026-03-16 16:36:52 [http-nio-8080-exec-6] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:36:52.184561600
+2026-03-16 16:36:52 [http-nio-8080-exec-6] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:36:52 [http-nio-8080-exec-6] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:36:52.188396600
+2026-03-16 16:38:07 [http-nio-8080-exec-9] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:38:07.456032100
+2026-03-16 16:38:07 [http-nio-8080-exec-9] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:38:07 [http-nio-8080-exec-9] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:38:07.459144200
+2026-03-16 16:38:07 [http-nio-8080-exec-10] INFO  c.salaf.wallet.service.WalletService - Transaction processed for user: yousif@test.com - Type: DEPOSIT, Amount: 500
+2026-03-16 16:38:17 [http-nio-8080-exec-1] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T16:38:17.613809900
+2026-03-16 16:38:17 [http-nio-8080-exec-1] INFO  com.salaf.auth.service.AuthService - Successful login for user: ali@test.com
+2026-03-16 16:38:17 [http-nio-8080-exec-1] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T16:38:17.615924500
+2026-03-16 16:38:17 [http-nio-8080-exec-2] INFO  c.salaf.wallet.service.WalletService - Transaction processed for user: ali@test.com - Type: DEPOSIT, Amount: 300
+2026-03-16 16:38:27 [http-nio-8080-exec-3] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:38:27.942386900
+2026-03-16 16:38:27 [http-nio-8080-exec-3] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:38:27 [http-nio-8080-exec-3] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:38:27.945928200
+2026-03-16 16:38:27 [http-nio-8080-exec-7] INFO  c.s.lend.service.LendRequestService - Lend request created by user: yousif@test.com for amount: 100
+2026-03-16 16:38:36 [http-nio-8080-exec-5] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T16:38:36.639308
+2026-03-16 16:38:36 [http-nio-8080-exec-5] INFO  com.salaf.auth.service.AuthService - Successful login for user: ali@test.com
+2026-03-16 16:38:36 [http-nio-8080-exec-5] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T16:38:36.641370700
+2026-03-16 16:38:45 [http-nio-8080-exec-4] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:38:45.304809
+2026-03-16 16:38:45 [http-nio-8080-exec-4] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:38:45 [http-nio-8080-exec-4] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:38:45.307011400
+2026-03-16 16:38:45 [http-nio-8080-exec-8] WARN  AUDIT - SECURITY_EVENT - Event: UNAUTHORIZED_BORROWER_ACCESS - User: yousif@test.com - Details: Attempted borrower access to lend ID: 1 - Time: 2026-03-16T16:38:45.318009800
+2026-03-16 16:38:45 [http-nio-8080-exec-8] WARN  c.s.common.GlobalExceptionHandler - ResponseStatusException: 403 FORBIDDEN "Only the borrower can perform this action"
+2026-03-16 16:38:56 [http-nio-8080-exec-9] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T16:38:56.276665500
+2026-03-16 16:38:56 [http-nio-8080-exec-9] INFO  com.salaf.auth.service.AuthService - Successful login for user: ali@test.com
+2026-03-16 16:38:56 [http-nio-8080-exec-9] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T16:38:56.279075900
+2026-03-16 16:39:06 [http-nio-8080-exec-1] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T16:39:06.620967700
+2026-03-16 16:39:06 [http-nio-8080-exec-1] INFO  com.salaf.auth.service.AuthService - Successful login for user: ali@test.com
+2026-03-16 16:39:06 [http-nio-8080-exec-1] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T16:39:06.624148700
+2026-03-16 16:39:16 [http-nio-8080-exec-3] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:39:16.345035100
+2026-03-16 16:39:16 [http-nio-8080-exec-3] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:39:16 [http-nio-8080-exec-3] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:39:16.348282300
+2026-03-16 16:39:16 [http-nio-8080-exec-7] INFO  c.s.common.GlobalExceptionHandler - Validation error: {dueDate=Due date must be in the future}
+2026-03-16 16:39:26 [http-nio-8080-exec-5] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:39:26.133638600
+2026-03-16 16:39:26 [http-nio-8080-exec-5] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:39:26 [http-nio-8080-exec-5] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:39:26.137678
+2026-03-16 16:39:26 [http-nio-8080-exec-6] INFO  c.s.common.GlobalExceptionHandler - Validation error: {dueDate=Due date must be in the future}
+2026-03-16 16:39:36 [http-nio-8080-exec-4] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:39:36.260534800
+2026-03-16 16:39:36 [http-nio-8080-exec-4] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:39:36 [http-nio-8080-exec-4] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:39:36.262866200
+2026-03-16 16:39:36 [http-nio-8080-exec-8] INFO  c.s.lend.service.LendRequestService - Lend request created by user: yousif@test.com for amount: 200
+2026-03-16 16:39:44 [http-nio-8080-exec-9] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T16:39:44.813140500
+2026-03-16 16:39:44 [http-nio-8080-exec-9] INFO  com.salaf.auth.service.AuthService - Successful login for user: ali@test.com
+2026-03-16 16:39:44 [http-nio-8080-exec-9] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T16:39:44.815503500
+2026-03-16 16:40:04 [http-nio-8080-exec-1] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:40:04.414304900
+2026-03-16 16:40:04 [http-nio-8080-exec-1] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:40:04 [http-nio-8080-exec-1] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:40:04.416308900
+2026-03-16 16:40:14 [http-nio-8080-exec-3] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:40:14.022089200
+2026-03-16 16:40:14 [http-nio-8080-exec-3] INFO  com.salaf.auth.service.AuthService - Successful login for user: yousif@test.com
+2026-03-16 16:40:14 [http-nio-8080-exec-3] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: yousif@test.com - Time: 2026-03-16T16:40:14.024053400
+2026-03-16 17:32:12 [http-nio-8080-exec-4] INFO  com.salaf.auth.service.AuthService - New user registered: paul@array.com
+2026-03-16 17:32:12 [http-nio-8080-exec-4] INFO  AUDIT - USER_REGISTRATION - Email: paul@array.com - Time: 2026-03-16T17:32:12.554536800
+2026-03-16 17:32:32 [http-nio-8080-exec-3] INFO  c.salaf.wallet.service.WalletService - Card information updated for user: paul@array.com
+2026-03-16 17:32:32 [http-nio-8080-exec-4] INFO  c.salaf.wallet.service.WalletService - Transaction processed for user: paul@array.com - Type: DEPOSIT, Amount: 100
+2026-03-16 17:32:49 [http-nio-8080-exec-3] INFO  c.s.contact.service.ContactService - Contact created by user: paul@array.com for user: ali@test.com
+2026-03-16 17:33:28 [http-nio-8080-exec-2] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T17:33:28.992194600
+2026-03-16 17:33:28 [http-nio-8080-exec-2] INFO  com.salaf.auth.service.AuthService - Successful login for user: ali@test.com
+2026-03-16 17:33:28 [http-nio-8080-exec-2] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: ali@test.com - Time: 2026-03-16T17:33:28.992518900
+2026-03-16 17:33:51 [http-nio-8080-exec-1] INFO  c.salaf.wallet.service.WalletService - Card information updated for user: ali@test.com
+2026-03-16 17:34:09 [http-nio-8080-exec-10] INFO  c.s.contact.service.ContactService - Contact created by user: ali@test.com for user: paul@array.com
+2026-03-16 17:34:47 [http-nio-8080-exec-9] INFO  c.s.lend.service.LendRequestService - Lend request created by user: ali@test.com for amount: 50
+2026-03-16 17:35:10 [http-nio-8080-exec-6] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: paul@array.com - Time: 2026-03-16T17:35:10.336987300
+2026-03-16 17:35:10 [http-nio-8080-exec-6] INFO  com.salaf.auth.service.AuthService - Successful login for user: paul@array.com
+2026-03-16 17:35:10 [http-nio-8080-exec-6] INFO  AUDIT - USER_LOGIN_SUCCESS - Email: paul@array.com - Time: 2026-03-16T17:35:10.336987300

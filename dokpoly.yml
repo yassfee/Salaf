@@ -1,0 +1,41 @@
+# Dokpoly Configuration for Salaf
+name: salaf-backend
+description: Salaf Lending Platform Backend API
+
+# Build configuration
+build:
+  dockerfile: docker-compose.yml
+  context: .
+
+# Environment variables (set these in Dokpoly dashboard)
+env:
+  - JWT_SECRET
+  - JWT_EXPIRATION_MS=86400000
+  - LOG_LEVEL_ROOT=WARN
+  - LOG_LEVEL_SECURITY=ERROR
+
+# Health check configuration
+healthcheck:
+  path: /api/health
+  port: 8080
+  interval: 30s
+  timeout: 10s
+  retries: 3
+
+# Resource limits
+resources:
+  memory: 512Mi
+  cpu: 500m
+
+# Persistent storage
+volumes:
+  - name: salaf-data
+    mount: /app/data
+    size: 1Gi
+  - name: salaf-logs
+    mount: /app/logs
+    size: 500Mi
+
+# Port exposure
+ports:
+  - 8080:8080
