@@ -27,3 +27,5 @@ backend/target/
 
 # Claude
 .claude/
+backend/logs/
+backend/logs/
