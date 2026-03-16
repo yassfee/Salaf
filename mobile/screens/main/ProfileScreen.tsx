@@ -111,10 +111,10 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <View style={styles.headerRow}>
             <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/settings')}>
-              <Ionicons name="settings-outline" size={20} color="#121212" />
+              <Ionicons name="settings-outline" size={20} color={Colors.primary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerBtn} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={20} color="#121212" />
+              <Ionicons name="log-out-outline" size={20} color={Colors.primary} />
             </TouchableOpacity>
           </View>
           <View style={styles.avatar}>
@@ -185,5 +185,5 @@ const styles = StyleSheet.create({
   section: { paddingHorizontal: 20, marginTop: 8, marginBottom: 16 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: Colors.textPrimary, marginBottom: 12 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignSelf: 'stretch', marginBottom: 12 },
-  headerBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EFEFEF', alignItems: 'center', justifyContent: 'center' },
+  headerBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
 });

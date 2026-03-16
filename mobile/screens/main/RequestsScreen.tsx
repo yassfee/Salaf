@@ -201,7 +201,7 @@ export default function RequestsScreen() {
               onPress={() => setActiveTab('incoming')}
             >
               <Text style={[styles.tabText, activeTab === 'incoming' && styles.tabTextActive]}>
-                Incoming
+                Incoming Lends
               </Text>
             </TouchableOpacity>
             <TouchableOpacity

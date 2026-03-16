@@ -25,6 +25,7 @@ public class LendResponseDto {
     private Long contactId;           // borrower contact ID
     private String lenderName;        // always the lender's name
     private String lenderEmail;       // always the lender's email
+    private String borrowerEmail;     // always the borrower's email
     private BigDecimal amount;
     private BigDecimal paid;          // amount - remainingBalance — matches frontend Lend.paid
     private BigDecimal remainingBalance;
@@ -53,6 +54,7 @@ public class LendResponseDto {
                 .contactId(l.getBorrower().getId())
                 .lenderName(l.getLender().getName())
                 .lenderEmail(l.getLender().getEmail())
+                .borrowerEmail(l.getBorrower().getLinkedUser() != null ? l.getBorrower().getLinkedUser().getEmail() : null)
                 .amount(l.getAmount())
                 .paid(paid)
                 .remainingBalance(l.getRemainingBalance())
@@ -75,6 +77,7 @@ public class LendResponseDto {
                 .contactId(l.getBorrower().getId())
                 .lenderName(l.getLender().getName())
                 .lenderEmail(l.getLender().getEmail())
+                .borrowerEmail(l.getBorrower().getLinkedUser() != null ? l.getBorrower().getLinkedUser().getEmail() : null)
                 .amount(l.getAmount())
                 .paid(paid)
                 .remainingBalance(l.getRemainingBalance())

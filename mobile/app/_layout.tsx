@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import Toast, { BaseToast, ErrorToast, ToastConfig } from 'react-native-toast-message';
 import { useFonts } from 'expo-font';
 import {
   WorkSans_400Regular,
@@ -28,6 +29,27 @@ export default function RootLayout() {
 
   if (!fontsLoaded) return null;
 
+  const toastConfig: ToastConfig = {
+    success: (props) => (
+      <BaseToast
+        {...props}
+        style={{ borderLeftColor: '#F5C518', borderRadius: 12, marginHorizontal: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 14 }}
+        text1Style={{ fontSize: 14, fontWeight: '700', color: '#121212' }}
+        text2Style={{ fontSize: 12, color: '#6B7280' }}
+      />
+    ),
+    error: (props) => (
+      <ErrorToast
+        {...props}
+        style={{ borderLeftColor: '#EF4444', borderRadius: 12, marginHorizontal: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 14 }}
+        text1Style={{ fontSize: 14, fontWeight: '700', color: '#121212' }}
+        text2Style={{ fontSize: 12, color: '#6B7280' }}
+      />
+    ),
+  };
+
   return (
     <>
       <StatusBar style="dark" />
@@ -42,6 +64,7 @@ export default function RootLayout() {
         <Stack.Screen name="suggest-repayment" />
         <Stack.Screen name="create-borrow" />
       </Stack>
+      <Toast config={toastConfig} />
     </>
   );
 }

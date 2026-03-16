@@ -5,7 +5,7 @@ import { Colors } from '../../constants/colors';
 import { useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-function CenterTabButton({ children, onPress, onLongPress }: any) {
+function CenterTabButton({ onPress, onLongPress }: any) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -13,7 +13,13 @@ function CenterTabButton({ children, onPress, onLongPress }: any) {
       activeOpacity={0.85}
       style={styles.centerBtnWrapper}
     >
-      <View style={styles.centerBtn}>{children}</View>
+      <View style={styles.centerBtn}>
+        <Image
+          source={require('../../assets/Salaf LogoW.png')}
+          style={{ width: 36, height: 36 }}
+          resizeMode="contain"
+        />
+      </View>
     </TouchableOpacity>
   );
 }
@@ -98,13 +104,6 @@ export default function TabsLayout() {
         name="lends"
         options={{
           title: '',
-          tabBarIcon: () => (
-            <Image
-              source={require('../../assets/Salaf LogoW.png')}
-              style={{ width: 36, height: 36 }}
-              resizeMode="contain"
-            />
-          ),
           tabBarButton: (props) => <CenterTabButton {...props} />,
         }}
       />

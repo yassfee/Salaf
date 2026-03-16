@@ -89,6 +89,7 @@ export interface LendResponse {
   contactId: number;
   lenderName: string;
   lenderEmail: string;
+  borrowerEmail: string;
   amount: number;
   paid: number;
   remainingBalance: number;

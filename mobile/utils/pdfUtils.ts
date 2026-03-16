@@ -27,7 +27,6 @@ async function downloadReceiptWeb(lendId: number, options: DownloadOptions): Pro
     const receiptNo = `RCP-${String(lendId).padStart(5, '0')}`;
     const fileName = `receipt-${receiptNo}.pdf`;
 
-    console.log('Web: Downloading PDF from:', pdfUrl);
 
     // Fetch the PDF with authentication
     const response = await fetch(pdfUrl, {
@@ -91,10 +90,9 @@ async function downloadReceiptMobile(lendId: number, options: DownloadOptions): 
     const receiptNo = `RCP-${String(lendId).padStart(5, '0')}`;
     const fileName = `receipt-${receiptNo}.pdf`;
     
-    // Download the PDF file
     const downloadResult = await FileSystem.downloadAsync(
       pdfUrl,
-      FileSystem.documentDirectory + fileName,
+      FileSystem.cacheDirectory + fileName,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -103,19 +101,14 @@ async function downloadReceiptMobile(lendId: number, options: DownloadOptions): 
     );
 
     if (downloadResult.status === 200) {
-      if (options.showSuccessAlert) {
-        const buttons: any[] = [{ text: 'OK' }];
-        
-        if (options.allowShare) {
-          buttons.push({ 
-            text: 'Share', 
-            onPress: () => shareReceipt(lendId, false)
-          });
-        }
-
-        showSuccessToast(`Receipt downloaded successfully!\nSaved as: ${fileName}`);
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(downloadResult.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Save Receipt',
+          UTI: 'com.adobe.pdf',
+        });
       }
-      
       return downloadResult.uri;
     } else {
       throw new Error('Download failed');
@@ -145,24 +138,19 @@ export async function downloadReceipt(
  * Share a PDF receipt for web platform
  */
 async function shareReceiptWeb(lendId: number, showSuccessAlert: boolean): Promise<boolean> {
-  console.log('shareReceiptWeb called with:', { lendId, showSuccessAlert });
   
   try {
     const token = await AsyncStorage.getItem('token');
     if (!token) {
-      console.log('No token found');
       showErrorToast('Authentication required');
       return false;
     }
 
     const pdfUrl = `${API_BASE_URL}/api/pdf/receipt/${lendId}`;
-    console.log('Copying URL to clipboard:', pdfUrl);
     
     await Clipboard.setStringAsync(pdfUrl);
-    console.log('URL copied to clipboard successfully');
     
     if (showSuccessAlert) {
-      console.log('Showing clipboard success toast');
       showClipboardSuccess(pdfUrl);
     }
     return true;
@@ -244,18 +232,13 @@ export async function shareReceipt(
   lendId: number, 
   showSuccessAlert: boolean = true
 ): Promise<boolean> {
-  console.log('shareReceipt called with:', { lendId, showSuccessAlert, platform: Platform.OS });
   
   try {
     if (Platform.OS === 'web') {
-      console.log('Calling shareReceiptWeb...');
       const result = await shareReceiptWeb(lendId, showSuccessAlert);
-      console.log('shareReceiptWeb result:', result);
       return result;
     } else {
-      console.log('Calling shareReceiptMobile...');
       const result = await shareReceiptMobile(lendId, showSuccessAlert);
-      console.log('shareReceiptMobile result:', result);
       return result;
     }
   } catch (error: any) {

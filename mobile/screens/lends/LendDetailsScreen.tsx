@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
-import { getLendById, getIncomingLendById, recordRepayment, LendResponse } from '../../services/api';
+import { getLendById, getIncomingLendById, recordRepayment, acceptLend, rejectLend, approveBorrowRequest, declineBorrowRequest, LendResponse } from '../../services/api';
 import CardContainer from '../../components/ui/CardContainer';
 import DraggableSheet from '../../components/ui/DraggableSheet';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -28,6 +28,8 @@ export default function LendDetailsScreen() {
   const [repayLoading, setRepayLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [errorVisible, setErrorVisible] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const showError = useCallback((msg: string) => {
     setErrorMsg(msg);
@@ -183,6 +185,94 @@ export default function LendDetailsScreen() {
       )}
 
       <View style={styles.bottomActions}>
+        {/* Borrower accepting an incoming lend offer */}
+        {isBorrowerView && lend.status === 'PENDING' && (
+          <>
+            <TouchableOpacity
+              style={styles.agreementRow}
+              onPress={() => setAgreed((v) => !v)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.checkbox, agreed && styles.checkboxChecked]}>
+                {agreed && <Ionicons name="checkmark" size={12} color="#fff" />}
+              </View>
+              <Text style={styles.agreementText}>I agree to borrow this money and will return it by {formatDate(lend.due)}</Text>
+            </TouchableOpacity>
+            <View style={styles.reqActionRow}>
+              <TouchableOpacity
+                style={[styles.reqAcceptBtn, (!agreed || actionLoading) && styles.reqAcceptBtnDisabled]}
+                disabled={!agreed || actionLoading}
+                onPress={async () => {
+                  setActionLoading(true);
+                  try {
+                    const updated = await acceptLend(lend.id);
+                    setLend(updated);
+                  } catch (e: any) {
+                    showError(e?.response?.data?.message ?? 'Failed to accept.');
+                  } finally { setActionLoading(false); }
+                }}
+              >
+                <Text style={styles.reqAcceptText}>{actionLoading ? 'Accepting…' : 'Accept'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.reqRejectBtn, actionLoading && { opacity: 0.5 }]}
+                disabled={actionLoading}
+                onPress={async () => {
+                  setActionLoading(true);
+                  try {
+                    const updated = await rejectLend(lend.id);
+                    setLend(updated);
+                  } catch (e: any) {
+                    showError(e?.response?.data?.message ?? 'Failed to reject.');
+                  } finally { setActionLoading(false); }
+                }}
+              >
+                <Text style={styles.reqRejectText}>Reject</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.spacer} />
+          </>
+        )}
+
+        {/* Lender approving a borrow request */}
+        {!isBorrowerView && lend.status === 'BORROW_REQUESTED' && (
+          <>
+            <View style={styles.reqActionRow}>
+              <TouchableOpacity
+                style={[styles.reqAcceptBtn, actionLoading && { opacity: 0.5 }]}
+                disabled={actionLoading}
+                onPress={async () => {
+                  setActionLoading(true);
+                  try {
+                    const updated = await approveBorrowRequest(lend.id);
+                    setLend(updated);
+                  } catch (e: any) {
+                    showError(e?.response?.data?.message ?? 'Failed to approve.');
+                  } finally { setActionLoading(false); }
+                }}
+              >
+                <Text style={styles.reqAcceptText}>{actionLoading ? 'Approving…' : 'Approve'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.reqRejectBtn, actionLoading && { opacity: 0.5 }]}
+                disabled={actionLoading}
+                onPress={async () => {
+                  setActionLoading(true);
+                  try {
+                    const updated = await declineBorrowRequest(lend.id);
+                    setLend(updated);
+                  } catch (e: any) {
+                    showError(e?.response?.data?.message ?? 'Failed to decline.');
+                  } finally { setActionLoading(false); }
+                }}
+              >
+                <Text style={styles.reqRejectText}>Decline</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.spacer} />
+          </>
+        )}
+
         {isBorrowerView && lend.status !== 'PAID' && lend.status !== 'REJECTED' && lend.status !== 'PENDING' && (
           <PrimaryButton title="+ Record Repayment" onPress={() => setModalVisible(true)} />
         )}
@@ -315,4 +405,14 @@ const styles = StyleSheet.create({
   errorToast: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.dangerLight, borderRadius: 12, padding: 14, marginHorizontal: 20, marginBottom: 12, borderWidth: 1, borderColor: Colors.danger },
   modalErrorToast: { marginTop: 16, backgroundColor: Colors.dangerLight, borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: Colors.danger },
   errorToastText: { flex: 1, fontSize: 13, color: Colors.danger, fontWeight: '600' },
+  agreementRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
+  checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  checkboxChecked: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  agreementText: { flex: 1, fontSize: 12, color: Colors.textSecondary, lineHeight: 18 },
+  reqActionRow: { flexDirection: 'row', gap: 10 },
+  reqAcceptBtn: { flex: 1, backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  reqAcceptBtnDisabled: { opacity: 0.45 },
+  reqAcceptText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  reqRejectBtn: { flex: 1, borderWidth: 1.5, borderColor: Colors.danger, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  reqRejectText: { fontSize: 14, fontWeight: '700', color: Colors.danger },
 });

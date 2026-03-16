@@ -1,64 +1,46 @@
-import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 
 export interface ToastOptions {
   type?: 'success' | 'error' | 'warning' | 'info';
   duration?: number;
 }
 
-/**
- * Show a success toast with golden styling
- */
-export function showSuccessToast(message: string, options: ToastOptions = {}) {
-  Alert.alert(
-    'Success',
-    message,
-    [{ text: 'OK', style: 'default' }],
-    { 
-      cancelable: true,
-      userInterfaceStyle: 'light'
-    }
-  );
+export function showSuccessToast(message: string) {
+  Toast.show({
+    type: 'success',
+    text1: 'Success',
+    text2: message,
+    visibilityTime: 3000,
+    position: 'bottom',
+  });
 }
 
-/**
- * Show an error toast
- */
-export function showErrorToast(message: string, options: ToastOptions = {}) {
-  Alert.alert(
-    'Error',
-    message,
-    [{ text: 'OK', style: 'destructive' }],
-    { 
-      cancelable: true,
-      userInterfaceStyle: 'light'
-    }
-  );
+export function showErrorToast(message: string) {
+  Toast.show({
+    type: 'error',
+    text1: 'Error',
+    text2: message,
+    visibilityTime: 4000,
+    position: 'bottom',
+  });
 }
 
-/**
- * Show a warning toast
- */
-export function showWarningToast(message: string, options: ToastOptions = {}) {
-  Alert.alert(
-    'Warning',
-    message,
-    [{ text: 'OK', style: 'default' }],
-    { 
-      cancelable: true,
-      userInterfaceStyle: 'light'
-    }
-  );
+export function showWarningToast(message: string) {
+  Toast.show({
+    type: 'error',
+    text1: 'Warning',
+    text2: message,
+    visibilityTime: 3500,
+    position: 'bottom',
+  });
 }
 
-/**
- * Show clipboard success specifically for URL copying
- */
-export function showClipboardSuccess(url: string) {
-  console.log('showClipboardSuccess called with URL:', url);
-  
-  // Try a simpler alert first
-  Alert.alert(
-    'Success',
-    'Receipt URL copied to clipboard successfully!'
-  );
+export function showClipboardSuccess(_url: string) {
+  Toast.show({
+    type: 'success',
+    text1: 'Copied',
+    text2: 'Receipt URL copied to clipboard',
+    visibilityTime: 3000,
+    position: 'bottom',
+  });
 }

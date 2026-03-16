@@ -1,14 +1,21 @@
 package com.salaf.pdf.service;
 
+import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.colors.Color;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
+import com.itextpdf.layout.borders.Border;
+import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.Cell;
+import com.itextpdf.layout.element.Div;
+import com.itextpdf.layout.element.Image;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
+import com.itextpdf.layout.properties.BorderRadius;
+import com.itextpdf.layout.properties.HorizontalAlignment;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 import com.salaf.auth.entity.User;
@@ -18,6 +25,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 @Service
@@ -26,207 +37,241 @@ public class PdfService {
 
     private final LendRequestRepository lendRequestRepository;
 
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd MMM yyyy");
+    private static final DateTimeFormatter DATE_FMT     = DateTimeFormatter.ofPattern("dd MMM yyyy");
     private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm");
 
-    // Color scheme for PDF styling
-    private static final Color PRIMARY_COLOR = new DeviceRgb(41, 128, 185);      // Blue #2980b9
-    private static final Color SECONDARY_COLOR = new DeviceRgb(52, 152, 219);    // Light Blue #3498db
-    private static final Color DARK_HEADER = new DeviceRgb(44, 62, 80);          // Dark Blue-Gray #2c3e50
-    private static final Color LIGHT_HEADER = new DeviceRgb(236, 240, 241);      // Light Gray #ecf0f1
-    private static final Color SUCCESS_COLOR = new DeviceRgb(39, 174, 96);       // Green #27ae60
-    private static final Color WARNING_COLOR = new DeviceRgb(230, 126, 34);      // Orange #e67e22
-    private static final Color DANGER_COLOR = new DeviceRgb(231, 76, 60);        // Red #e74c3c
-    private static final Color TEXT_DARK = new DeviceRgb(44, 62, 80);            // Dark text #2c3e50
-    private static final Color TEXT_LIGHT = ColorConstants.WHITE;                 // White text
+    // ── Brand colors matching the mobile app ──────────────────────────────────
+    private static final Color C_PRIMARY = new DeviceRgb(0xFF, 0xB5, 0x00); // #FFB500 amber
+    private static final Color C_TEXT    = new DeviceRgb(0x12, 0x12, 0x12); // #121212
+    private static final Color C_GRAY    = new DeviceRgb(0x9C, 0xA3, 0xAF); // #9CA3AF
+    private static final Color C_BORDER  = new DeviceRgb(0xEF, 0xEF, 0xEF); // #EFEFEF
+    private static final Color C_SUCCESS = new DeviceRgb(0x22, 0xC5, 0x5E); // #22C55E
+    private static final Color C_DANGER  = new DeviceRgb(0xEF, 0x44, 0x44); // #EF4444
+    private static final Color C_WARNING = new DeviceRgb(0xFB, 0x92, 0x3C); // #FB923C
+    private static final Color C_BLUE    = new DeviceRgb(0x3B, 0x82, 0xF6); // #3B82F6
 
-    // Task 8 — FR-22, FR-23: generate a lend receipt PDF
+    // ── Public entry points ───────────────────────────────────────────────────
+
     public byte[] generateLendReceipt(Long lendId, User user) {
         LendRequest lend = lendRequestRepository.findByIdAndLender(lendId, user)
                 .orElseThrow(() -> new RuntimeException("Lend #" + lendId + " not found"));
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-
-        try (Document doc = new Document(new PdfDocument(new PdfWriter(baos)))) {
-
-            // Title with primary color
-            doc.add(new Paragraph("Salaf — Lend Receipt")
-                    .setBold()
-                    .setFontSize(22)
-                    .setFontColor(PRIMARY_COLOR)
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setMarginBottom(6));
-
-            doc.add(new Paragraph("Generated: " + java.time.LocalDateTime.now().format(DATETIME_FMT))
-                    .setFontSize(9)
-                    .setFontColor(ColorConstants.GRAY)
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setMarginBottom(20));
-
-            // Detail table with enhanced styling
-            Table table = new Table(UnitValue.createPercentArray(new float[]{35, 65}))
-                    .useAllAvailableWidth();
-
-            addStyledRow(table, "Lend ID", "#" + lend.getId(), DARK_HEADER, TEXT_LIGHT, true);
-            addStyledRow(table, "Lender", user.getName(), LIGHT_HEADER, TEXT_DARK, false);
-            addStyledRow(table, "Borrower", lend.getBorrower().getName(), LIGHT_HEADER, TEXT_DARK, false);
-            addStyledRow(table, "Amount", "BD " + lend.getAmount().toPlainString(), LIGHT_HEADER, TEXT_DARK, false);
-            
-            // Color-code remaining balance based on amount
-            Color balanceColor = lend.getRemainingBalance().compareTo(java.math.BigDecimal.ZERO) > 0 ? DANGER_COLOR : SUCCESS_COLOR;
-            addStyledRow(table, "Remaining", "BD " + lend.getRemainingBalance().toPlainString(), LIGHT_HEADER, balanceColor, false);
-            
-            addStyledRow(table, "Due Date", lend.getDueDate().format(DATE_FMT), LIGHT_HEADER, TEXT_DARK, false);
-            
-            // Color-code status
-            Color statusColor = getStatusColor(lend.getStatus().name());
-            addStyledRow(table, "Status", lend.getStatus().name(), LIGHT_HEADER, statusColor, false);
-            
-            addStyledRow(table, "Created", lend.getCreatedAt().format(DATETIME_FMT), LIGHT_HEADER, TEXT_DARK, false);
-
-            if (lend.getNote() != null && !lend.getNote().isBlank()) {
-                addStyledRow(table, "Note", lend.getNote(), SECONDARY_COLOR, TEXT_LIGHT, false);
-            }
-
-            doc.add(table);
-        }
-
-        return baos.toByteArray();
+        return buildReceiptPdf(lend);
     }
 
-    // Generate receipt PDF for both lender and borrower
     public byte[] generateReceiptPdf(Long lendId, User currentUser) {
-        // Try to find as lender first
         LendRequest lend = lendRequestRepository.findByIdAndLender(lendId, currentUser)
                 .orElse(null);
-        
-        // If not found as lender, try as borrower
         if (lend == null) {
             lend = lendRequestRepository.findByIdAndBorrower_LinkedUser(lendId, currentUser)
                     .orElseThrow(() -> new RuntimeException("Lend #" + lendId + " not found or access denied"));
         }
+        return buildReceiptPdf(lend);
+    }
 
+    // ── Core PDF builder ──────────────────────────────────────────────────────
+
+    private byte[] buildReceiptPdf(LendRequest lend) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         try (Document doc = new Document(new PdfDocument(new PdfWriter(baos)))) {
+            // Body margins — header will bleed to edge with negative margins
+            doc.setMargins(0, 36, 36, 36);
 
-            // Title with primary color
-            doc.add(new Paragraph("Salaf — Payment Receipt")
-                    .setBold()
-                    .setFontSize(22)
-                    .setFontColor(PRIMARY_COLOR)
+            // ── Amber header banner ───────────────────────────────────────────
+            Div header = new Div()
+                    .setBackgroundColor(C_PRIMARY)
+                    .setPaddingTop(32).setPaddingBottom(24)
+                    .setPaddingLeft(36).setPaddingRight(36)
+                    .setMarginLeft(-36).setMarginRight(-36)
+                    .setMarginBottom(28);
+
+            // Logo image (falls back to text if not found)
+            try (InputStream is = getClass().getResourceAsStream("/logo.png")) {
+                if (is != null) {
+                    Image logo = new Image(ImageDataFactory.create(is.readAllBytes()));
+                    logo.setHeight(38);
+                    logo.setHorizontalAlignment(HorizontalAlignment.CENTER);
+                    header.add(logo);
+                } else {
+                    header.add(logoFallbackText());
+                }
+            } catch (IOException e) {
+                header.add(logoFallbackText());
+            }
+
+            header.add(new Paragraph("Payment Receipt")
+                    .setBold().setFontSize(16).setFontColor(ColorConstants.WHITE)
                     .setTextAlignment(TextAlignment.CENTER)
-                    .setMarginBottom(6));
+                    .setMarginTop(8).setMarginBottom(16));
 
-            doc.add(new Paragraph("Generated: " + java.time.LocalDateTime.now().format(DATETIME_FMT))
-                    .setFontSize(9)
-                    .setFontColor(ColorConstants.GRAY)
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setMarginBottom(20));
+            // Receipt No + Date on same row
+            Table meta = new Table(UnitValue.createPercentArray(new float[]{50, 50}))
+                    .useAllAvailableWidth().setBorder(Border.NO_BORDER);
+            meta.addCell(headerCell(
+                    new Paragraph("Receipt No.: RCP-" + String.format("%05d", lend.getId()))
+                            .setBold().setFontSize(12).setFontColor(ColorConstants.WHITE)));
+            meta.addCell(headerCell(
+                    new Paragraph("Date: " + LocalDateTime.now().format(DATE_FMT))
+                            .setBold().setFontSize(12).setFontColor(ColorConstants.WHITE)
+                            .setTextAlignment(TextAlignment.RIGHT)));
+            header.add(meta);
 
-            // Detail table with enhanced styling
-            Table table = new Table(UnitValue.createPercentArray(new float[]{35, 65}))
-                    .useAllAvailableWidth();
+            doc.add(header);
 
-            // Header row with dark background
-            addStyledRow(table, "Receipt No.", "RCP-" + String.format("%05d", lend.getId()), DARK_HEADER, TEXT_LIGHT, true);
-            
-            // Party information with light background
-            addStyledRow(table, "Lender", lend.getLender().getName(), LIGHT_HEADER, TEXT_DARK, false);
-            addStyledRow(table, "Borrower", lend.getBorrower().getName(), LIGHT_HEADER, TEXT_DARK, false);
-            
-            // Financial information
-            addStyledRow(table, "Original Amount", "BD " + lend.getAmount().toPlainString(), LIGHT_HEADER, TEXT_DARK, false);
-            
-            // Amount paid in green
-            java.math.BigDecimal amountPaid = lend.getAmount().subtract(lend.getRemainingBalance());
-            addStyledRow(table, "Amount Paid", "BD " + amountPaid.toPlainString(), LIGHT_HEADER, SUCCESS_COLOR, false);
-            
-            // Remaining balance - red if > 0, green if 0
-            Color balanceColor = lend.getRemainingBalance().compareTo(java.math.BigDecimal.ZERO) > 0 ? DANGER_COLOR : SUCCESS_COLOR;
-            addStyledRow(table, "Remaining Balance", "BD " + lend.getRemainingBalance().toPlainString(), LIGHT_HEADER, balanceColor, false);
-            
-            addStyledRow(table, "Due Date", lend.getDueDate().format(DATE_FMT), LIGHT_HEADER, TEXT_DARK, false);
-            
-            // Status with appropriate color
-            Color statusColor = getStatusColor(lend.getStatus().name());
-            addStyledRow(table, "Status", lend.getStatus().name(), LIGHT_HEADER, statusColor, false);
-            
-            addStyledRow(table, "Created", lend.getCreatedAt().format(DATETIME_FMT), LIGHT_HEADER, TEXT_DARK, false);
+            // ── Parties ───────────────────────────────────────────────────────
+            doc.add(sectionLabel("PARTIES"));
 
+            String borrowerEmail = lend.getBorrower().getLinkedUser() != null
+                    ? lend.getBorrower().getLinkedUser().getEmail() : "";
+
+            Table parties = dataTable();
+            addPartyRow(parties, "Lender",   lend.getLender().getName(),   lend.getLender().getEmail());
+            addPartyRow(parties, "Borrower", lend.getBorrower().getName(), borrowerEmail);
+            doc.add(parties);
+
+            // ── Payment details ───────────────────────────────────────────────
+            doc.add(sectionLabel("PAYMENT DETAILS"));
+
+            BigDecimal amountPaid  = lend.getAmount().subtract(lend.getRemainingBalance());
+            Color      balanceColor = lend.getRemainingBalance().compareTo(BigDecimal.ZERO) > 0
+                    ? C_DANGER : C_SUCCESS;
+
+            Table details = dataTable();
+            addDataRow(details, "Original Amount",  "BD " + lend.getAmount().toPlainString(),            C_TEXT);
+            addDataRow(details, "Amount Paid",      "BD " + amountPaid.toPlainString(),                 C_SUCCESS);
+            addDataRow(details, "Remaining Balance","BD " + lend.getRemainingBalance().toPlainString(),  balanceColor);
+            addDataRow(details, "Due Date",          lend.getDueDate().format(DATE_FMT),                C_TEXT);
+            addDataRow(details, "Created",           lend.getCreatedAt().format(DATETIME_FMT),          C_TEXT);
+            doc.add(details);
+
+            // Status badge
+            doc.add(statusBadge(lend.getStatus().name()));
+
+            // Note
             if (lend.getNote() != null && !lend.getNote().isBlank()) {
-                addStyledRow(table, "Note", lend.getNote(), SECONDARY_COLOR, TEXT_LIGHT, false);
+                doc.add(sectionLabel("NOTE"));
+                doc.add(new Paragraph(lend.getNote())
+                        .setFontSize(11).setFontColor(C_TEXT).setMarginBottom(16));
             }
 
-            doc.add(table);
-
-            // Acknowledgment section with success color
-            if (lend.getStatus().name().equals("ACCEPTED") || 
-                lend.getStatus().name().equals("PARTIALLY_PAID") || 
-                lend.getStatus().name().equals("PAID")) {
-                doc.add(new Paragraph("\nAcknowledged by " + lend.getBorrower().getName())
-                        .setFontSize(12)
-                        .setFontColor(SUCCESS_COLOR)
-                        .setBold()
-                        .setTextAlignment(TextAlignment.CENTER)
-                        .setMarginTop(20));
+            // ── Acknowledgment ────────────────────────────────────────────────
+            String status = lend.getStatus().name();
+            if (status.equals("ACCEPTED") || status.equals("PARTIALLY_PAID") || status.equals("PAID")) {
+                Div ack = new Div()
+                        .setBackgroundColor(new DeviceRgb(0xF0, 0xFD, 0xF4))
+                        .setBorder(new SolidBorder(C_SUCCESS, 1))
+                        .setBorderRadius(new BorderRadius(8))
+                        .setPadding(12)
+                        .setMarginTop(24).setMarginBottom(8);
+                ack.add(new Paragraph("Acknowledged by " + lend.getBorrower().getName())
+                        .setBold().setFontSize(12).setFontColor(C_SUCCESS)
+                        .setTextAlignment(TextAlignment.CENTER).setMarginBottom(2));
+                ack.add(new Paragraph(lend.getCreatedAt().format(DATE_FMT))
+                        .setFontSize(10).setFontColor(C_SUCCESS)
+                        .setTextAlignment(TextAlignment.CENTER));
+                doc.add(ack);
             }
 
-            // Footer
+            // ── Footer ────────────────────────────────────────────────────────
             doc.add(new Paragraph("Generated by Salaf")
-                    .setFontSize(10)
-                    .setFontColor(ColorConstants.GRAY)
+                    .setFontSize(9).setFontColor(C_GRAY)
                     .setTextAlignment(TextAlignment.CENTER)
-                    .setMarginTop(30));
+                    .setMarginTop(24));
         }
 
         return baos.toByteArray();
     }
 
-    // Helper method to add styled rows to table
-    private void addStyledRow(Table table, String label, String value, Color backgroundColor, Color textColor, boolean isHeader) {
-        Cell labelCell = new Cell()
-                .add(new Paragraph(label).setBold().setFontColor(textColor))
-                .setBackgroundColor(backgroundColor)
-                .setPadding(8);
-        
-        Cell valueCell = new Cell()
-                .add(new Paragraph(value).setFontColor(textColor))
-                .setBackgroundColor(backgroundColor)
-                .setPadding(8);
-        
-        if (isHeader) {
-            labelCell.setBold();
-            valueCell.setBold();
-        }
-        
-        table.addCell(labelCell);
-        table.addCell(valueCell);
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private Paragraph logoFallbackText() {
+        return new Paragraph("Salaf")
+                .setBold().setFontSize(28).setFontColor(ColorConstants.WHITE)
+                .setTextAlignment(TextAlignment.CENTER).setMarginBottom(4);
     }
 
-    // Helper method to get appropriate color for status
+    private Cell headerCell(Paragraph p) {
+        return new Cell().add(p).setBorder(Border.NO_BORDER)
+                .setBackgroundColor(C_PRIMARY).setPadding(0);
+    }
+
+    private Paragraph sectionLabel(String text) {
+        return new Paragraph(text)
+                .setBold().setFontSize(9).setFontColor(C_GRAY)
+                .setMarginTop(20).setMarginBottom(4);
+    }
+
+    private Table dataTable() {
+        return new Table(UnitValue.createPercentArray(new float[]{42, 58}))
+                .useAllAvailableWidth().setBorder(Border.NO_BORDER);
+    }
+
+    private void addDataRow(Table table, String label, String value, Color valueColor) {
+        table.addCell(new Cell()
+                .add(new Paragraph(label).setFontSize(11).setFontColor(C_GRAY))
+                .setBorder(Border.NO_BORDER)
+                .setBorderBottom(new SolidBorder(C_BORDER, 0.5f))
+                .setPaddingTop(9).setPaddingBottom(9).setPaddingLeft(0).setPaddingRight(0));
+        table.addCell(new Cell()
+                .add(new Paragraph(value).setFontSize(11).setFontColor(valueColor).setBold())
+                .setBorder(Border.NO_BORDER)
+                .setBorderBottom(new SolidBorder(C_BORDER, 0.5f))
+                .setPaddingTop(9).setPaddingBottom(9).setPaddingLeft(0).setPaddingRight(0)
+                .setTextAlignment(TextAlignment.RIGHT));
+    }
+
+    private void addPartyRow(Table table, String label, String name, String email) {
+        table.addCell(new Cell()
+                .add(new Paragraph(label).setFontSize(11).setFontColor(C_GRAY))
+                .setBorder(Border.NO_BORDER)
+                .setBorderBottom(new SolidBorder(C_BORDER, 0.5f))
+                .setPaddingTop(9).setPaddingBottom(9).setPaddingLeft(0).setPaddingRight(0));
+
+        Div nameBlock = new Div();
+        nameBlock.add(new Paragraph(name).setBold().setFontSize(11).setFontColor(C_TEXT).setMarginBottom(0));
+        if (!email.isBlank()) {
+            nameBlock.add(new Paragraph(email).setFontSize(9).setFontColor(C_GRAY).setMarginTop(2));
+        }
+        table.addCell(new Cell()
+                .add(nameBlock)
+                .setBorder(Border.NO_BORDER)
+                .setBorderBottom(new SolidBorder(C_BORDER, 0.5f))
+                .setPaddingTop(9).setPaddingBottom(9).setPaddingLeft(0).setPaddingRight(0)
+                .setTextAlignment(TextAlignment.RIGHT));
+    }
+
+    private Div statusBadge(String status) {
+        Div badge = new Div()
+                .setBackgroundColor(getStatusBgColor(status))
+                .setBorderRadius(new BorderRadius(20))
+                .setPaddingTop(5).setPaddingBottom(5)
+                .setPaddingLeft(14).setPaddingRight(14)
+                .setMarginTop(12).setMarginBottom(4)
+                .setHorizontalAlignment(HorizontalAlignment.LEFT);
+        badge.add(new Paragraph(status)
+                .setFontSize(10).setFontColor(getStatusColor(status)).setBold());
+        return badge;
+    }
+
     private Color getStatusColor(String status) {
         switch (status.toUpperCase()) {
-            case "PAID":
-                return SUCCESS_COLOR;
-            case "OVERDUE":
-                return DANGER_COLOR;
-            case "PARTIALLY_PAID":
-            case "ACCEPTED":
-            case "ACTIVE":
-                return WARNING_COLOR;
-            case "PENDING":
-            case "BORROW_REQUESTED":
-                return SECONDARY_COLOR;
-            case "REJECTED":
-                return DANGER_COLOR;
-            default:
-                return TEXT_DARK;
+            case "PAID":                              return C_SUCCESS;
+            case "OVERDUE": case "REJECTED":          return C_DANGER;
+            case "PARTIALLY_PAID": case "ACCEPTED":
+            case "ACTIVE":                            return C_WARNING;
+            case "PENDING": case "BORROW_REQUESTED":  return C_BLUE;
+            default:                                  return C_TEXT;
         }
     }
 
-    // Legacy method for backward compatibility
-    private void addRow(Table table, String label, String value) {
-        addStyledRow(table, label, value, LIGHT_HEADER, TEXT_DARK, false);
+    private Color getStatusBgColor(String status) {
+        switch (status.toUpperCase()) {
+            case "PAID":                              return new DeviceRgb(0xF0, 0xFD, 0xF4);
+            case "OVERDUE": case "REJECTED":          return new DeviceRgb(0xFE, 0xF2, 0xF2);
+            case "PARTIALLY_PAID": case "ACCEPTED":
+            case "ACTIVE":                            return new DeviceRgb(0xFF, 0xF7, 0xED);
+            case "PENDING": case "BORROW_REQUESTED":  return new DeviceRgb(0xEF, 0xF6, 0xFF);
+            default:                                  return new DeviceRgb(0xF5, 0xF5, 0xF5);
+        }
     }
 }

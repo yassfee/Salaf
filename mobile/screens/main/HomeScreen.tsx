@@ -478,7 +478,7 @@ export default function HomeScreen() {
               </View>
               <View>
                 <Text style={styles.greeting}>Hi{firstName ? `, ${firstName}` : ''}!</Text>
-                <Text style={styles.subGreeting}>{getGreeting()}</Text>
+                <Text style={styles.subGreeting}>Welcome back!</Text>
               </View>
             </View>
             <TouchableOpacity style={styles.bellBtn} onPress={handleOpenBell}>
@@ -1086,7 +1086,7 @@ export default function HomeScreen() {
                 style={[styles.reqTab, requestsTab === 'incoming' && styles.reqTabActive]}
                 onPress={() => setRequestsTab('incoming')}
               >
-                <Text style={[styles.reqTabText, requestsTab === 'incoming' && styles.reqTabTextActive]}>Incoming</Text>
+                <Text style={[styles.reqTabText, requestsTab === 'incoming' && styles.reqTabTextActive]}>Incoming Lends</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.reqTab, requestsTab === 'borrow-requests' && styles.reqTabActive]}
@@ -1115,20 +1115,22 @@ export default function HomeScreen() {
                           <Text style={styles.reqSectionLabel}>Pending Offers</Text>
                           {pendingIncoming.map((req) => (
                             <View key={req.id} style={styles.reqCard}>
-                              <View style={styles.reqCardHeader}>
-                                <View style={styles.reqAvatarRow}>
-                                  <View style={styles.reqAvatar}>
-                                    <Text style={styles.reqAvatarText}>{getInitials(req.lenderName)}</Text>
+                              <TouchableOpacity activeOpacity={0.7} onPress={() => { setRequestsVisible(false); router.push(`/lend-details?id=${req.id}&incoming=true`); }}>
+                                <View style={styles.reqCardHeader}>
+                                  <View style={styles.reqAvatarRow}>
+                                    <View style={styles.reqAvatar}>
+                                      <Text style={styles.reqAvatarText}>{getInitials(req.lenderName)}</Text>
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                      <Text style={styles.reqContactName} numberOfLines={1}>From: {req.lenderName}</Text>
+                                      <Text style={styles.reqAmount}>{formatCurrency(req.amount)}</Text>
+                                    </View>
                                   </View>
-                                  <View style={{ flex: 1 }}>
-                                    <Text style={styles.reqContactName} numberOfLines={1}>From: {req.lenderName}</Text>
-                                    <Text style={styles.reqAmount}>{formatCurrency(req.amount)}</Text>
-                                  </View>
+                                  <StatusBadge status={req.status} />
                                 </View>
-                                <StatusBadge status={req.status} />
-                              </View>
-                              <Text style={styles.reqDueDate}>Due: {formatDate(req.due)}</Text>
-                              {req.note ? <Text style={styles.reqNote}>{req.note}</Text> : null}
+                                <Text style={styles.reqDueDate}>Due: {formatDate(req.due)}</Text>
+                                {req.note ? <Text style={styles.reqNote}>{req.note}</Text> : null}
+                              </TouchableOpacity>
                               <TouchableOpacity
                                 style={styles.agreementRow}
                                 onPress={() => setRequestsAgreed((p) => ({ ...p, [req.id]: !p[req.id] }))}
@@ -1158,7 +1160,7 @@ export default function HomeScreen() {
                         <>
                           <Text style={styles.reqSectionLabel}>Handled</Text>
                           {handledIncoming.map((req) => (
-                            <View key={req.id} style={styles.reqCard}>
+                            <TouchableOpacity key={req.id} style={styles.reqCard} activeOpacity={0.7} onPress={() => { setRequestsVisible(false); router.push(`/lend-details?id=${req.id}&incoming=true`); }}>
                               <View style={styles.reqCardHeader}>
                                 <View style={styles.reqAvatarRow}>
                                   <View style={styles.reqAvatar}>
@@ -1172,7 +1174,7 @@ export default function HomeScreen() {
                                 <StatusBadge status={req.status} />
                               </View>
                               <Text style={styles.reqDueDate}>Due: {formatDate(req.due)}</Text>
-                            </View>
+                            </TouchableOpacity>
                           ))}
                         </>
                       )}
@@ -1184,20 +1186,22 @@ export default function HomeScreen() {
                   ) : (
                     borrowReqList.map((req) => (
                       <View key={req.id} style={styles.reqCard}>
-                        <View style={styles.reqCardHeader}>
-                          <View style={styles.reqAvatarRow}>
-                            <View style={styles.reqAvatar}>
-                              <Text style={styles.reqAvatarText}>{getInitials(req.contact)}</Text>
+                        <TouchableOpacity activeOpacity={0.7} onPress={() => { setRequestsVisible(false); router.push(`/lend-details?id=${req.id}`); }}>
+                          <View style={styles.reqCardHeader}>
+                            <View style={styles.reqAvatarRow}>
+                              <View style={styles.reqAvatar}>
+                                <Text style={styles.reqAvatarText}>{getInitials(req.contact)}</Text>
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.reqContactName} numberOfLines={1}>{req.contact} wants to borrow</Text>
+                                <Text style={styles.reqAmount}>{formatCurrency(req.amount)}</Text>
+                              </View>
                             </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.reqContactName} numberOfLines={1}>{req.contact} wants to borrow</Text>
-                              <Text style={styles.reqAmount}>{formatCurrency(req.amount)}</Text>
-                            </View>
+                            <StatusBadge status={req.status} />
                           </View>
-                          <StatusBadge status={req.status} />
-                        </View>
-                        <Text style={styles.reqDueDate}>Due: {formatDate(req.due)}</Text>
-                        {req.note ? <Text style={styles.reqNote}>{req.note}</Text> : null}
+                          <Text style={styles.reqDueDate}>Due: {formatDate(req.due)}</Text>
+                          {req.note ? <Text style={styles.reqNote}>{req.note}</Text> : null}
+                        </TouchableOpacity>
                         {req.status === 'BORROW_REQUESTED' && (
                           <View style={styles.reqActionRow}>
                             <TouchableOpacity style={styles.reqAcceptBtn} onPress={() => handleApprove(req.id)}>
@@ -1334,7 +1338,7 @@ const styles = StyleSheet.create({
   reqEmptyText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', paddingVertical: 32 },
   reqCard: { backgroundColor: Colors.background, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: Colors.border },
   reqCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
-  reqAvatarRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  reqAvatarRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 },
   reqAvatar: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#EFEFEF', alignItems: 'center', justifyContent: 'center' },
   reqAvatarText: { color: '#121212', fontWeight: '700', fontSize: 13 },
   reqContactName: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },

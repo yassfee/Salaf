@@ -16,7 +16,7 @@ import { getLendById, getIncomingLendById, getCurrentUser, LendResponse } from '
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import OutlinedButton from '../../components/ui/OutlinedButton';
 import { formatDate, formatCurrency } from '../../utils/formatCurrency';
-import { downloadReceipt } from '../../utils/pdfUtils';
+import { downloadReceipt, shareReceipt } from '../../utils/pdfUtils';
 
 export default function ReceiptPreviewScreen() {
   const router = useRouter();
@@ -51,10 +51,19 @@ export default function ReceiptPreviewScreen() {
 
   const handleDownloadPDF = async () => {
     if (!lend) return;
-    
     setDownloading(true);
     try {
-      await downloadReceipt(lend.id, { showSuccessAlert: true, allowShare: true });
+      await downloadReceipt(lend.id, { showSuccessAlert: true });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleSharePDF = async () => {
+    if (!lend) return;
+    setDownloading(true);
+    try {
+      await shareReceipt(lend.id, true);
     } finally {
       setDownloading(false);
     }
@@ -99,7 +108,7 @@ export default function ReceiptPreviewScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Receipt Preview</Text>
         <TouchableOpacity
-          onPress={handleDownloadPDF}
+          onPress={handleSharePDF}
           style={styles.shareBtn}
           disabled={downloading}
         >
@@ -136,13 +145,16 @@ export default function ReceiptPreviewScreen() {
           {/* Parties */}
           <View style={styles.receiptRow}>
             <Text style={styles.receiptKey}>Lender</Text>
-            <Text style={styles.receiptValue}>{lenderName}</Text>
+            <View style={styles.valueCol}>
+              <Text style={styles.receiptValue}>{lenderName}</Text>
+              <Text style={styles.receiptSub}>{lend.lenderEmail}</Text>
+            </View>
           </View>
           <View style={styles.receiptRow}>
             <Text style={styles.receiptKey}>Borrower</Text>
             <View style={styles.valueCol}>
               <Text style={styles.receiptValue}>{borrowerName}</Text>
-              <Text style={styles.receiptSub}>{lend.lenderEmail || currentUser.email}</Text>
+              <Text style={styles.receiptSub}>{lend.borrowerEmail || currentUser.email}</Text>
             </View>
           </View>
 
