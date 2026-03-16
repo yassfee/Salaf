@@ -78,6 +78,9 @@ public class LendRequestService {
 
         requireSufficientBalance(lender, req.getAmount());
 
+        // Deduct money from lender's wallet immediately when creating lend
+        adjustBalance(lender, req.getAmount().negate());
+
         // Sanitize note input
         String sanitizedNote = inputSanitizer.sanitizeNote(req.getNote());
 
@@ -143,14 +146,15 @@ public class LendRequestService {
         if (lend.getStatus() != LendStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Lend is not in PENDING status");
         }
-        requireSufficientBalance(lend.getLender(), lend.getAmount());
+        
         lend.setStatus(LendStatus.ACCEPTED);
         LendResponseDto result = LendResponseDto.fromBorrowerView(lendRequestRepository.save(lend));
-        // Money exchanged: lender pays out, borrower receives
-        adjustBalance(lend.getLender(), lend.getAmount().negate());
+        
+        // Transfer money from lender (already deducted) to borrower
         if (lend.getBorrower().getLinkedUser() != null) {
             adjustBalance(lend.getBorrower().getLinkedUser(), lend.getAmount());
         }
+        
         return result;
     }
 
@@ -162,8 +166,14 @@ public class LendRequestService {
         if (lend.getStatus() != LendStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Lend is not in PENDING status");
         }
+        
         lend.setStatus(LendStatus.REJECTED);
-        return LendResponseDto.fromBorrowerView(lendRequestRepository.save(lend));
+        LendResponseDto result = LendResponseDto.fromBorrowerView(lendRequestRepository.save(lend));
+        
+        // Refund money back to lender since the lend was rejected
+        adjustBalance(lend.getLender(), lend.getAmount());
+        
+        return result;
     }
 
     /** Lender cancels a pending lend they created. */
@@ -174,8 +184,14 @@ public class LendRequestService {
         if (lend.getStatus() != LendStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Only PENDING lends can be cancelled");
         }
+        
         lend.setStatus(LendStatus.REJECTED);
-        return LendResponseDto.from(lendRequestRepository.save(lend));
+        LendResponseDto result = LendResponseDto.from(lendRequestRepository.save(lend));
+        
+        // Refund money back to lender since they cancelled the lend
+        adjustBalance(lender, lend.getAmount());
+        
+        return result;
     }
 
     /**

@@ -25,8 +25,14 @@ public class DashboardService {
     // Task 6 — FR-17: aggregate totals for the authenticated user
     public DashboardResponse getSummary(User user) {
         List<LendRequest> lends = lendRequestRepository.findByLender(user);
+        List<LendRequest> borrows = lendRequestRepository.findByBorrower_LinkedUser(user);
 
         BigDecimal totalLent = lends.stream()
+                .filter(l -> l.getStatus() != LendStatus.PENDING && l.getStatus() != LendStatus.REJECTED)
+                .map(LendRequest::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalBorrowed = borrows.stream()
                 .filter(l -> l.getStatus() != LendStatus.PENDING && l.getStatus() != LendStatus.REJECTED)
                 .map(LendRequest::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -49,12 +55,17 @@ public class DashboardService {
                 .filter(l -> l.getStatus() == LendStatus.OVERDUE)
                 .count();
 
+        // Add borrowed active count to total active count
+        int borrowedActiveCount = (int) borrows.stream()
+                .filter(l -> l.getStatus() == LendStatus.ACTIVE || l.getStatus() == LendStatus.PARTIALLY_PAID)
+                .count();
+
         return new DashboardResponse(
                 totalLent,
-                BigDecimal.ZERO, // borrowed tracking handled by Person 2
+                totalBorrowed,
                 outstanding,
                 overdue,
-                activeCount,
+                activeCount + borrowedActiveCount,
                 overdueCount
         );
     }

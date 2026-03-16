@@ -106,6 +106,8 @@ export interface DashboardSummary {
   totalBorrowed: number;
   outstanding: number;
   overdue: number;
+  activeCount: number;
+  overdueCount: number;
 }
 
 export interface DueSoonLend {

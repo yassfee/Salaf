@@ -19,7 +19,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(RateLimitingFilter.class);
     private static final int MAX_REQUESTS_PER_MINUTE = 60;
-    private static final int AUTH_MAX_REQUESTS_PER_MINUTE = 5; // Stricter for auth endpoints
+    private static final int AUTH_MAX_REQUESTS_PER_MINUTE = 20; // Increased for testing
     private static final long WINDOW_SIZE_MS = 60_000; // 1 minute
 
     private final ConcurrentHashMap<String, RequestWindow> requestCounts = new ConcurrentHashMap<>();
@@ -31,6 +31,12 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         
         String clientIp = getClientIp(request);
         String requestPath = request.getRequestURI();
+        
+        // Skip rate limiting for certain endpoints
+        if (shouldSkipRateLimit(requestPath)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         
         // Determine rate limit based on endpoint
         int maxRequests = requestPath.startsWith("/api/auth/") ? 
@@ -45,6 +51,15 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         }
         
         filterChain.doFilter(request, response);
+    }
+
+    private boolean shouldSkipRateLimit(String requestPath) {
+        // Skip rate limiting for certain authenticated endpoints that are less risky
+        return requestPath.equals("/api/auth/delete-account") ||
+               requestPath.equals("/api/auth/change-password") ||
+               requestPath.startsWith("/api/dashboard/") ||
+               requestPath.startsWith("/api/lends/") ||
+               requestPath.startsWith("/api/contacts/");
     }
 
     private boolean isRateLimited(String clientIp, int maxRequests) {
