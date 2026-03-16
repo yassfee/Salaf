@@ -1,0 +1,4 @@
+target/
+logs/
+*.db
+.mvn/wrapper/maven-wrapper.jar
