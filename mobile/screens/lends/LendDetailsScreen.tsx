@@ -273,7 +273,7 @@ export default function LendDetailsScreen() {
           </>
         )}
 
-        {isBorrowerView && lend.status !== 'PAID' && lend.status !== 'REJECTED' && lend.status !== 'PENDING' && (
+        {isBorrowerView && lend.status !== 'PAID' && lend.status !== 'REJECTED' && lend.status !== 'PENDING' && lend.status !== 'BORROW_REQUESTED' && (
           <PrimaryButton title="+ Record Repayment" onPress={() => setModalVisible(true)} />
         )}
         <View style={styles.spacer} />
@@ -300,7 +300,7 @@ export default function LendDetailsScreen() {
           />
         </View>
         <TextInput
-          style={[styles.modalInput, styles.noteInput]}
+          style={styles.noteInput}
           placeholder="Note (optional)"
           value={repayNote}
           onChangeText={setRepayNote}
@@ -400,8 +400,8 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 20, textAlign: 'center' },
   inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 16, height: 56, marginBottom: 16 },
   bdPrefix: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary, marginRight: 8 },
-  modalInput: { flex: 1, fontSize: 20, fontWeight: '600', color: Colors.textPrimary },
-  noteInput: { fontSize: 14, fontWeight: '400', borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 16, height: 48, marginBottom: 16 },
+  modalInput: { flex: 1, fontSize: 18, fontWeight: '600', color: Colors.textPrimary, paddingVertical: 0 },
+  noteInput: { fontSize: 14, fontWeight: '400', color: Colors.textPrimary, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 16 },
   errorToast: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.dangerLight, borderRadius: 12, padding: 14, marginHorizontal: 20, marginBottom: 12, borderWidth: 1, borderColor: Colors.danger },
   modalErrorToast: { marginTop: 16, backgroundColor: Colors.dangerLight, borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: Colors.danger },
   errorToastText: { flex: 1, fontSize: 13, color: Colors.danger, fontWeight: '600' },

@@ -13,6 +13,8 @@ import com.salaf.lend.repository.LendRequestRepository;
 import com.salaf.notification.entity.Notification;
 import com.salaf.notification.entity.NotificationType;
 import com.salaf.notification.repository.NotificationRepository;
+import com.salaf.repayment.dto.RepaymentResponse;
+import com.salaf.repayment.repository.RepaymentRepository;
 import com.salaf.wallet.entity.Wallet;
 import com.salaf.wallet.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,7 @@ public class LendRequestService {
     private final ContactRepository contactRepository;
     private final NotificationRepository notificationRepository;
     private final WalletRepository walletRepository;
+    private final RepaymentRepository repaymentRepository;
     private final InputSanitizer inputSanitizer;
 
     private Wallet getOrCreateWallet(User user) {
@@ -118,9 +121,11 @@ public class LendRequestService {
     }
 
     public LendResponseDto getLendById(Long id, User lender) {
-        return lendRequestRepository.findByIdAndLender(id, lender)
-                .map(LendResponseDto::from)
+        LendRequest lend = lendRequestRepository.findByIdAndLender(id, lender)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lend not found"));
+        List<RepaymentResponse> repayments = repaymentRepository.findByLendRequestIdOrderByPaidAtDesc(id)
+                .stream().map(RepaymentResponse::fromEntity).toList();
+        return LendResponseDto.from(lend, repayments);
     }
 
     /** Returns all lends where the current user is the borrower (incoming lends). */
@@ -133,9 +138,11 @@ public class LendRequestService {
 
     /** Returns a single incoming lend by id for the borrower. */
     public LendResponseDto getIncomingLendById(Long id, User borrower) {
-        return lendRequestRepository.findByIdAndBorrower_LinkedUser(id, borrower)
-                .map(LendResponseDto::fromBorrowerView)
+        LendRequest lend = lendRequestRepository.findByIdAndBorrower_LinkedUser(id, borrower)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lend not found"));
+        List<RepaymentResponse> repayments = repaymentRepository.findByLendRequestIdOrderByPaidAtDesc(id)
+                .stream().map(RepaymentResponse::fromEntity).toList();
+        return LendResponseDto.fromBorrowerView(lend, repayments);
     }
 
     /** Borrower accepts a pending lend. */

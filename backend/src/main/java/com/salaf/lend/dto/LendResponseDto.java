@@ -96,4 +96,10 @@ public class LendResponseDto {
         dto.setRepayments(repayments);
         return dto;
     }
+
+    public static LendResponseDto fromBorrowerView(LendRequest l, List<RepaymentResponse> repayments) {
+        LendResponseDto dto = fromBorrowerView(l);
+        dto.setRepayments(repayments);
+        return dto;
+    }
 }

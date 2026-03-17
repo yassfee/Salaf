@@ -69,7 +69,11 @@ export default function TabsLayout() {
           shadowOpacity: 0.04,
           shadowRadius: 8,
           elevation: 8,
+          position: 'absolute',
         },
+        tabBarBackground: () => (
+          <View style={{ flex: 1, backgroundColor: Colors.card }} />
+        ),
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',

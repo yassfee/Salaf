@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 },
   subtitle: { fontSize: 13, color: '#FFFFFF', opacity: 0.75, marginBottom: 18 },
   fab: {
-    position: 'absolute', bottom: 24, right: 24,
+    position: 'absolute', bottom: 96, right: 24,
     width: 56, height: 56, borderRadius: 16,
     backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
