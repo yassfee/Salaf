@@ -163,6 +163,7 @@ export default function LendDetailsScreen() {
                   <View>
                     <Text style={styles.repayAmount}>{formatCurrency(rep.amountPaid)}</Text>
                     <Text style={styles.repayMeta}>{formatDate(rep.paidAt)}</Text>
+                    {rep.note ? <Text style={styles.repayNote}>{rep.note}</Text> : null}
                   </View>
                   <TouchableOpacity
                     onPress={() => router.push(`/receipt?lendId=${lend.id}`)}
@@ -392,6 +393,7 @@ const styles = StyleSheet.create({
   repayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   repayAmount: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   repayMeta: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  repayNote: { fontSize: 12, color: Colors.textSecondary, marginTop: 4, fontStyle: 'italic' },
   receiptBtn: { padding: 4 },
   bottomActions: { paddingHorizontal: 20, paddingVertical: 16, backgroundColor: Colors.background },
   spacer: { height: 12 },
