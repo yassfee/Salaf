@@ -6,7 +6,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8081:8080"
+      - "7432:8080"
     environment:
       - JWT_SECRET=your-secure-256-bit-secret-key-change-in-production
       - SERVER_PORT=8080
