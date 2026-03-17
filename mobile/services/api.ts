@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { LendStatus } from '../types';
 
-const API_BASE_URL = 'http://salaf.sandbox.array.world:7432';
+const API_BASE_URL = 'http://salaf.sandbox.array.world';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
