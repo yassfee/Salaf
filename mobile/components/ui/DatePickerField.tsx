@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 
@@ -84,28 +84,24 @@ export default function DatePickerField({ value, onChange, placeholder = 'Select
         />
       )}
 
-      {/* iOS: modal with spinner */}
-      {Platform.OS === 'ios' && (
-        <Modal visible={visible} transparent animationType="slide">
-          <View style={styles.overlay}>
-            <View style={styles.sheet}>
-              <View style={styles.header}>
-                <Text style={styles.headerTitle}>Select Date</Text>
-                <TouchableOpacity onPress={() => setVisible(false)}>
-                  <Text style={styles.done}>Done</Text>
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={pickerValue}
-                minimumDate={minDate}
-                mode="date"
-                display="spinner"
-                onChange={handleChange}
-                style={{ width: '100%' }}
-              />
-            </View>
+      {/* iOS: inline spinner (no nested Modal — avoids iOS nested-Modal bug) */}
+      {Platform.OS === 'ios' && visible && (
+        <View style={styles.inlineSheet}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Select Date</Text>
+            <TouchableOpacity onPress={() => setVisible(false)}>
+              <Text style={styles.done}>Done</Text>
+            </TouchableOpacity>
           </View>
-        </Modal>
+          <DateTimePicker
+            value={pickerValue}
+            minimumDate={minDate}
+            mode="date"
+            display="spinner"
+            onChange={handleChange}
+            style={{ width: '100%' }}
+          />
+        </View>
       )}
     </>
   );
@@ -120,8 +116,7 @@ const styles = StyleSheet.create({
   errorBorder: { borderColor: Colors.danger },
   label: { flex: 1, fontSize: 14, color: Colors.textPrimary },
   placeholder: { color: Colors.textSecondary },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: Colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32 },
+  inlineSheet: { backgroundColor: Colors.card, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, marginTop: 4, marginBottom: 4, overflow: 'hidden' },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingVertical: 14,

@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import {
   Animated, PanResponder, StyleSheet, View, Modal,
   TouchableWithoutFeedback, StyleProp, ViewStyle, Dimensions,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Colors } from '../../constants/colors';
 
@@ -86,7 +87,7 @@ export default function DraggableSheet({ visible, onClose, children, sheetStyle 
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
-      <View style={styles.container}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
         {/* Backdrop — tap to close, opacity tied to sheet position */}
         <TouchableWithoutFeedback onPress={handleClose}>
           <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} />
@@ -99,7 +100,7 @@ export default function DraggableSheet({ visible, onClose, children, sheetStyle 
           </View>
           {children}
         </Animated.View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
